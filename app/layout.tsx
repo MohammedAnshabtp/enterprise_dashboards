@@ -1,13 +1,14 @@
 import "./styles/globals.css";
 import Header from "../app/dashboard/components/Header";
 import Sidebar from "../app/dashboard/components/Sidebar";
+import type { ReactNode } from "react";
 
 export const metadata = {
   title: "Enterprise Dashboard",
   description: "Next.js Dashboard Application",
 };
 
-export default function RootLayout({ children }) {
+export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
       <body className="flex h-screen overflow-hidden">
