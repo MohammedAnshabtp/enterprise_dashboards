@@ -1,17 +1,28 @@
 "use client";
+
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useUIStore } from "../../store/uiStore";
+
 export default function Sidebar() {
-  const { activeMenu, setActiveMenu, sidebarCollapsed } = useUIStore();
+  const pathname = usePathname();
+  const { sidebarCollapsed, setSidebarCollapsed } = useUIStore();
+
   const menu = [
-    { label: "User visit", link: "/user-visit" },
-    { label: "Product catalog", link: "/product-catalog" },
-    { label: "Price list", link: "/price-list" },
-    { label: "Product adding / updating / deleting", link: "/product-crud" },
-    { label: "Sale report", link: "/sale-report" },
-    { label: "Staff reports", link: "/staff-reports" },
-    { label: "Quotations", link: "/quotations" },
-    { label: "Customer reviews", link: "/customer-reviews" },
+    { label: "User visit", path: "/user-visit" },
+    { label: "Product catalog", path: "/product-catalog" },
+    { label: "Price list", path: "/price-list" },
+    { label: "Product CRUD", path: "/product-crud" },
+    { label: "Sale report", path: "/sale-report" },
+    { label: "Staff reports", path: "/staff-reports" },
+    { label: "Quotations", path: "/quotations" },
+    { label: "Customer reviews", path: "/customer-reviews" },
   ];
+
+  const handleClick = () => {
+    // Auto close sidebar after click
+    setSidebarCollapsed(true);
+  };
 
   return (
     <div
@@ -19,31 +30,36 @@ export default function Sidebar() {
         sidebarCollapsed ? "w-20" : "w-64"
       }`}
     >
+      {/* Header */}
       <div className="mb-8 px-4 py-3">
         <div className="flex items-center gap-3">
           <div className="h-10 w-10 rounded-full bg-purple-600 text-white flex items-center justify-center">
             A
           </div>
-          <div>
-            <h2 className="font-semibold">Angle Enterprise</h2>
-            <p className="text-sm text-gray-500">Admin dashboard</p>
-          </div>
+          {!sidebarCollapsed && (
+            <div>
+              <h2 className="font-semibold">Angle Enterprise</h2>
+              <p className="text-sm text-gray-500">Admin dashboard</p>
+            </div>
+          )}
         </div>
       </div>
+
+      {/* Menu */}
       <nav className="p-4 space-y-2">
         {menu.map((item) => (
-          <a
+          <Link
             key={item.label}
             href={item.path}
-            onClick={() => setActiveMenu(item.path)}
+            onClick={handleClick}
             className={`block px-4 py-2 rounded-lg ${
-              activeMenu === item.path
+              pathname === item.path
                 ? "bg-gray-200 text-gray-900 font-medium"
                 : "text-gray-600 hover:bg-gray-100 hover:text-gray-800"
             }`}
           >
             {sidebarCollapsed ? item.label.charAt(0) : item.label}
-          </a>
+          </Link>
         ))}
       </nav>
     </div>

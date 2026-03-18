@@ -3,13 +3,38 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+  --color-primary: #f5c448; 
+  --color-surface-dark: #2a2823; 
+  --color-text-muted: #a8a29e;
+  --color-background-light:#ffffff;
+  --color-background-dark:#1f1c13;
+  --color-surface-light: #f8f7f6;
+  --color-accent: #F9F6F1;
+  --color-text-dark: #171612;
+  --color-text-light: #f8f7f6;
+  --color-text-muted-light: #555555;
+  --color-text-muted-dark: #a8a29e;
 }
 
 @theme inline {
-  --color-background: var(--background);
+  /* Core variables you were already using: */
+  --color-background: var(--background); 
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+
+  /* Add ALL your custom colors here to use them as Tailwind utilities */
+  --color-primary: var(--color-primary);
+  --color-surface-dark: var(--color-surface-dark);
+  --color-text-muted: var(--color-text-muted);
+  --color-background-light: var(--color-background-light);
+  --color-background-dark: var(--color-background-dark);
+  --color-surface-light: var(--color-surface-light);
+  --color-text-light: var(--color-text-light);
+  --color-text-dark: var(--color-text-dark);
+  --color-text-muted-light: var(--color-text-muted-light);
+  --color-text-muted-dark: var(--color-text-muted-dark);
+  --color-accent: var(--color-accent);
 }
 
 @media (prefers-color-scheme: dark) {
