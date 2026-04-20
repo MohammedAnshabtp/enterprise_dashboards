@@ -2,10 +2,12 @@
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { LogOut, UserRound } from "lucide-react";
+import { getProfile } from "../../services/authServices";
 
 export default function Header() {
   const [open, setOpen] = useState(false);
   const dropdownRef = useRef(null);
+  const [profile, setProfile] = useState(null);
   const router = useRouter();
 
   // ✅ Close dropdown when clicking outside
@@ -30,20 +32,36 @@ export default function Header() {
     router.push("/auth/login");
   };
 
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const res = await getProfile();
+        setProfile(res?.data?.data);
+      } catch (err) {
+        console.error(err);
+      }
+    };
+
+    fetchData();
+  }, []);
+
   return (
     <header className="flex justify-between items-center px-6 py-4 bg-white border-b border-gray-200">
-      <h1 className="text-xl font-semibold">User visit</h1>
+      <h1 className="text-xl font-semibold text-black">User visit</h1>
 
       <div className="flex items-center gap-4">
         <input
           type="text"
           placeholder="Search products, orders"
-          className="border border-gray-300 rounded-lg px-4 py-2 w-64 text-sm"
+          className="border border-gray-300 rounded-lg px-4 py-2 w-64 text-sm text-black"
         />
 
         <div className="text-right">
-          <p className="text-sm font-medium">Admin</p>
-          <p className="text-xs text-gray-500">ar@company.com</p>
+          <p className="text-sm font-medium text-black">
+            {profile?.name || "Loading..."}
+          </p>
+          <p className="text-xs text-gray-500">{profile?.email || ""}</p>
+          <p className="text-xs text-gray-500">{profile?.role || ""}</p>
         </div>
 
         {/* Avatar */}

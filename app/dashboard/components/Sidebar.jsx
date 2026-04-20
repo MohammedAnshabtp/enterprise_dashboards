@@ -10,6 +10,7 @@ export default function Sidebar() {
 
   const menu = [
     { label: "User visit", path: "/user-visit" },
+    { label: "User profile", path: "/user-profile" },
     { label: "Product catalog", path: "/product-catalog" },
     { label: "Price list", path: "/price-list" },
     { label: "Product CRUD", path: "/product-crud" },
@@ -20,7 +21,6 @@ export default function Sidebar() {
   ];
 
   const handleClick = () => {
-    // Auto close sidebar after click
     setSidebarCollapsed(true);
   };
 
@@ -38,7 +38,7 @@ export default function Sidebar() {
           </div>
           {!sidebarCollapsed && (
             <div>
-              <h2 className="font-semibold">Angle Enterprise</h2>
+              <h2 className="font-semibold text-black">Angle Enterprise</h2>
               <p className="text-sm text-gray-500">Admin dashboard</p>
             </div>
           )}
@@ -51,7 +51,7 @@ export default function Sidebar() {
           <Link
             key={item.label}
             href={item.path}
-            onClick={handleClick}
+            onClick={handleClick} // ✅ THIS CALLS THE FUNCTION
             className={`block px-4 py-2 rounded-lg ${
               pathname === item.path
                 ? "bg-gray-200 text-gray-900 font-medium"
