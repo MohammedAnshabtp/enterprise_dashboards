@@ -29,3 +29,43 @@ export const uploadAvatarService = (file) => {
 export const deleteAvatarService = () => {
   return api.delete(ENDPOINTS.DELETE_AVATAR);
 };
+
+// GET
+export const getSpaceCategoriesService = () => {
+  return api.get(ENDPOINTS.GET_SPACE_CATEGORY);
+};
+
+// CREATE
+export const createSpaceCategoryService = (data) => {
+  return api.post(ENDPOINTS.CREATE_SPACE_CATEGORY, data);
+};
+
+// UPDATE
+export const updateSpaceCategoryService = (id, data) => {
+  return api.patch(ENDPOINTS.UPDATE_SPACE_CATEGORY(id), data);
+};
+
+// DELETE
+export const deleteSpaceCategoryService = (id) => {
+  return api.delete(ENDPOINTS.DELETE_SPACE_CATEGORY(id));
+};
+
+// GET
+export const getSizeCategoriesService = () => {
+  return api.get(ENDPOINTS.GET_SIZE_CATEGORY);
+};
+
+// CREATE
+export const createSizeCategoryService = (data) => {
+  return api.post(ENDPOINTS.CREATE_SIZE_CATEGORY, data);
+};
+
+// UPDATE
+export const updateSizeCategoryService = (id, data) => {
+  return api.patch(ENDPOINTS.UPDATE_SIZE_CATEGORY(id), data);
+};
+
+// DELETE
+export const deleteSizeCategoryService = (id) => {
+  return api.delete(ENDPOINTS.DELETE_SIZE_CATEGORY(id));
+};

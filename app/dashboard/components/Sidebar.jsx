@@ -12,8 +12,11 @@ export default function Sidebar() {
     { label: "User visit", path: "/user-visit" },
     { label: "User profile", path: "/user-profile" },
     { label: "Product catalog", path: "/product-catalog" },
-    { label: "Price list", path: "/price-list" },
-    { label: "Product CRUD", path: "/product-crud" },
+    { label: "Space category", path: "/space-category" },
+    { label: "Size category", path: "/size-category" },
+    { label: "Product Style", path: "/product-style" },
+
+    { label: "Catalogue", path: "/catalogue" },
     { label: "Sale report", path: "/sale-report" },
     { label: "Staff reports", path: "/staff-reports" },
     { label: "Quotations", path: "/quotations" },

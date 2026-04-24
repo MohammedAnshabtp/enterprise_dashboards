@@ -15,7 +15,7 @@ api.interceptors.request.use((config) => {
     config.headers["Content-Type"] = "application/json";
   }
 
-  return config;
+  return config; // 🔥 REQUIRED
 });
 
 api.interceptors.response.use(

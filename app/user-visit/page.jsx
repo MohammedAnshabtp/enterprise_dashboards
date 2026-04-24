@@ -4,6 +4,7 @@ import { CircleChevronLeft } from "lucide-react";
 import { useEffect, useState } from "react";
 import { getProfile } from "../services/authServices";
 import { useRouter } from "next/navigation";
+import BackButton from "../dashboard/components/BackButton";
 
 export default function UserVisitPage() {
   const [users, setUsers] = useState([]);
@@ -34,15 +35,10 @@ export default function UserVisitPage() {
   return (
     <div className="space-y-6 p-6">
       <div className="flex items-center py-5 text-black gap-2">
-        {/* Back Button */}
-        <button
-          onClick={() => router.back()}
-          className="p-1 rounded-full hover:bg-gray-200 transition"
-        >
-          <CircleChevronLeft size={30} />
-        </button>
-        {/* Title */}
-        <h1 className="text-2xl font-semibold">User Visit</h1>
+        <div className="flex items-center justify-between">
+          <BackButton />
+          <h1 className="text-xl font-semibold text-black">User Visit</h1>
+        </div>
       </div>
       <div className="bg-white border rounded-xl p-6">
         <h2 className="font-semibold mb-4 text-black">Users</h2>

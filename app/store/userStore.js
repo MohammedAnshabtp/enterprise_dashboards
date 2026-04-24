@@ -9,20 +9,35 @@ export const useUserStore = create((set) => ({
   user: null,
   loading: false,
 
+  // ✅ FETCH PROFILE
+  getProfile: async () => {
+    try {
+      const res = await getProfileService();
+
+      set({
+        user: res.data?.data, // ⚠️ IMPORTANT PATH
+      });
+    } catch (err) {
+      console.log("PROFILE ERROR:", err.response?.data);
+    }
+  },
+
   updateProfile: async (data) => {
     set({ loading: true });
 
     try {
-      // 🔥 remove empty values
       const filteredData = Object.fromEntries(
         Object.entries(data).filter(([_, v]) => v !== "")
       );
 
       const res = await updateProfileService(filteredData);
 
-      set({
-        user: res.data.user,
-      });
+      set((state) => ({
+        user: {
+          ...state.user,
+          ...res.data.data, // ✅ FIXED
+        },
+      }));
     } catch (err) {
       console.log("ERROR:", err.response?.data);
     } finally {
@@ -31,18 +46,21 @@ export const useUserStore = create((set) => ({
   },
 
   uploadAvatar: async (file) => {
-    try {
-      const res = await uploadAvatarService(file);
+    const formData = new FormData();
+    formData.append("avatar", file);
 
-      set((state) => ({
-        user: {
-          ...state.user,
-          avatar: res.data.avatar,
-        },
-      }));
-    } catch (err) {
-      console.error("Upload avatar error", err);
-    }
+    const res = await uploadAvatarService(file);
+
+    // ✅ FIX: correct path
+    const avatarUrl = res.data?.data?.avatar;
+
+    // ✅ UPDATE STATE
+    set((state) => ({
+      user: {
+        ...state.user,
+        avatar: avatarUrl,
+      },
+    }));
   },
 
   deleteAvatar: async () => {

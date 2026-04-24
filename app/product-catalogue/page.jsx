@@ -4,10 +4,13 @@
 
 import { useEffect, useState } from "react";
 import { useProductStore } from "../store/productStore";
+import { CircleChevronLeft } from "lucide-react";
+import { useRouter } from "next/navigation";
 
 export default function ProductCatalogPage() {
   const { products, fetchProducts, createProduct, updateProduct } =
     useProductStore();
+  const router = useRouter();
 
   const [open, setOpen] = useState(false);
   const [editId, setEditId] = useState(null);
@@ -94,10 +97,18 @@ export default function ProductCatalogPage() {
     <div className="min-h-screen bg-gray-50 p-6 space-y-6">
       {/* HEADER */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div>
+        <div className="flex items-center gap-3 px-6 py-4">
+          <button
+            onClick={() => router.back()}
+            className="p-2 rounded-full hover:bg-gray-100 transition text-black"
+          >
+            <CircleChevronLeft size={26} />
+          </button>
           <h1 className="text-2xl font-semibold text-gray-800">
             Product Catalog
           </h1>
+        </div>
+        <div>
           <p className="text-sm text-gray-500">
             Manage your products and inventory
           </p>
@@ -131,7 +142,7 @@ export default function ProductCatalogPage() {
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
           {products.map((p) => (
             <div
-              key={p.id}
+              key={p._id}
               className="bg-white rounded-xl border shadow-sm hover:shadow-md transition overflow-hidden"
             >
               <img

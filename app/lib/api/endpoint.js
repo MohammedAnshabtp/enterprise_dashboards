@@ -21,10 +21,34 @@ export const ENDPOINTS = {
   DELETE_AVATAR: "/api/v1/auth/user/avatar",
 
   // ADDRESS
-  ADDRESS: "/api/address/v1/",
+  ADDRESS: "/api/v1/address/",
 
   // PRODUCTS
   CREATE_PRODUCT: "/api/v1/product/",
   GET_PRODUCT: "/api/v1/product/",
   UPDATE_PRODUCT: (id) => `/api/v1/product/${id}`,
+
+  // SPACE CATEGORY
+  GET_SPACE_CATEGORY: "/api/v1/category/space/",
+  CREATE_SPACE_CATEGORY: "/api/v1/category/space/",
+  UPDATE_SPACE_CATEGORY: (id) => `/api/v1/category/space/${id}`,
+  DELETE_SPACE_CATEGORY: (id) => `/api/v1/category/space/${id}`,
+
+  // SIZE CATEGORY
+  GET_SIZE_CATEGORY: "/api/v1/category/size/",
+  CREATE_SIZE_CATEGORY: "/api/v1/category/size/",
+  UPDATE_SIZE_CATEGORY: (id) => `/api/v1/category/size/${id}`,
+  DELETE_SIZE_CATEGORY: (id) => `/api/v1/category/size/${id}`,
+
+  // PRODUCT STYLE (TILE)
+  GET_PRODUCT_STYLE: "/api/v1/style/",
+  CREATE_PRODUCT_STYLE: "/api/v1/style/",
+  UPDATE_PRODUCT_STYLE: (id) => `/api/v1/style/${id}`,
+  DELETE_PRODUCT_STYLE: (id) => `/api/v1/style/${id}`,
+
+  // CATALOGUE
+  GET_CATALOGUE: "/api/v1/catelogue/",
+  CREATE_CATALOGUE: "/api/v1/catelogue/",
+  UPDATE_CATALOGUE: (id) => `/api/v1/catelogue/${id}`,
+  DELETE_CATALOGUE: (id) => `/api/v1/catelogue/${id}`,
 };
