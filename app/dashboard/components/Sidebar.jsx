@@ -11,13 +11,13 @@ export default function Sidebar() {
   const menu = [
     { label: "User visit", path: "/user-visit" },
     { label: "User profile", path: "/user-profile" },
-    { label: "Product catalog", path: "/product-catalog" },
+    { label: "Product catalogue", path: "/product-catalogue" },
     { label: "Space category", path: "/space-category" },
     { label: "Size category", path: "/size-category" },
     { label: "Product Style", path: "/product-style" },
 
     { label: "Catalogue", path: "/catalogue" },
-    { label: "Sale report", path: "/sale-report" },
+    { label: "Wish List", path: "/wishlist-page" },
     { label: "Staff reports", path: "/staff-reports" },
     { label: "Quotations", path: "/quotations" },
     { label: "Customer reviews", path: "/customer-reviews" },

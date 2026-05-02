@@ -51,4 +51,10 @@ export const ENDPOINTS = {
   CREATE_CATALOGUE: "/api/v1/catelogue/",
   UPDATE_CATALOGUE: (id) => `/api/v1/catelogue/${id}`,
   DELETE_CATALOGUE: (id) => `/api/v1/catelogue/${id}`,
+
+  // WISHLIST
+  GET_WISHLIST: "/wishlist",
+  TOGGLE_WISHLIST: "/wishlist/toggle",
+  REMOVE_WISHLIST: (id) => `/wishlist/${id}`,
+  CLEAR_WISHLIST: "/wishlist/clear",
 };

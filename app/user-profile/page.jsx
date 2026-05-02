@@ -47,6 +47,7 @@ export default function ProfilePage() {
 
   useEffect(() => {
     if (user) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setForm({
         name: user.name || "",
         phone: user.phone || "",
@@ -107,6 +108,7 @@ export default function ProfilePage() {
 
   useEffect(() => {
     if (user?.avatar) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setAvatarUrl(`${user.avatar}?t=${new Date().getTime()}`); // ✅ safe here
     } else {
       setAvatarUrl(

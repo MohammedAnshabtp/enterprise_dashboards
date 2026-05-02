@@ -4,12 +4,17 @@
 
 import { useEffect, useState } from "react";
 import { useProductStore } from "../store/productStore";
+import { useWishlistStore } from "../store/wishlistStore"; // ✅ NEW
 import { CircleChevronLeft } from "lucide-react";
 import { useRouter } from "next/navigation";
+import WishlistButton from "../components/Wishlist-Button";
 
 export default function ProductCatalogPage() {
   const { products, fetchProducts, createProduct, updateProduct } =
     useProductStore();
+
+  const { fetchWishlist } = useWishlistStore(); // ✅ NEW
+
   const router = useRouter();
 
   const [open, setOpen] = useState(false);
@@ -31,9 +36,10 @@ export default function ProductCatalogPage() {
 
   const [preview, setPreview] = useState(null);
 
-  // FETCH PRODUCTS
+  // 🔥 FETCH PRODUCTS + WISHLIST
   useEffect(() => {
     fetchProducts(query);
+    fetchWishlist(); // ✅ IMPORTANT
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [query]);
 
@@ -57,6 +63,7 @@ export default function ProductCatalogPage() {
 
     if (!form.name || !form.description) {
       alert("Name & Description required");
+      setLoading(false);
       return;
     }
 
@@ -82,7 +89,7 @@ export default function ProductCatalogPage() {
   };
 
   const handleEdit = (p) => {
-    setEditId(p.id);
+    setEditId(p._id); // 🔥 FIXED (_id instead of id)
     setForm({
       name: p.name,
       description: p.description,
@@ -108,11 +115,10 @@ export default function ProductCatalogPage() {
             Product Catalog
           </h1>
         </div>
-        <div>
-          <p className="text-sm text-gray-500">
-            Manage your products and inventory
-          </p>
-        </div>
+
+        <p className="text-sm text-gray-500">
+          Manage your products and inventory
+        </p>
 
         <button
           onClick={() => setOpen(true)}
@@ -143,14 +149,21 @@ export default function ProductCatalogPage() {
           {products.map((p) => (
             <div
               key={p._id}
-              className="bg-white rounded-xl border shadow-sm hover:shadow-md transition overflow-hidden"
+              className="bg-white rounded-xl border shadow-sm hover:shadow-md transition overflow-hidden relative"
             >
+              {/* ❤️ Wishlist Button */}
+              <div className="absolute top-2 right-2 z-10 bg-white/80 backdrop-blur rounded-full">
+                <WishlistButton productId={p._id} />
+              </div>
+
+              {/* 🖼️ Image */}
               <img
                 src={p.image || "/placeholder.png"}
                 className="h-40 w-full object-cover"
                 alt=""
               />
 
+              {/* 📦 Content */}
               <div className="p-4 space-y-2">
                 <h3 className="font-semibold text-gray-800 line-clamp-1">
                   {p.name}
@@ -177,7 +190,7 @@ export default function ProductCatalogPage() {
         <button
           disabled={query.page === 1}
           onClick={() => setQuery({ ...query, page: query.page - 1 })}
-          className="px-4 py-2 border rounded disabled:opacity-50 bg-indigo-600"
+          className="px-4 py-2 border rounded disabled:opacity-50 bg-indigo-600 text-white"
         >
           Prev
         </button>
@@ -186,7 +199,7 @@ export default function ProductCatalogPage() {
 
         <button
           onClick={() => setQuery({ ...query, page: query.page + 1 })}
-          className="bg-indigo-600 px-4 py-2 border rounded"
+          className="bg-indigo-600 text-white px-4 py-2 border rounded"
         >
           Next
         </button>
@@ -202,7 +215,7 @@ export default function ProductCatalogPage() {
             onClick={(e) => e.stopPropagation()}
             className="bg-white rounded-2xl w-full max-w-lg p-6 space-y-4"
           >
-            <h2 className="text-lg font-semibold text-black ">
+            <h2 className="text-lg font-semibold text-black">
               {editId ? "Edit Product" : "Add Product"}
             </h2>
 
@@ -239,7 +252,6 @@ export default function ProductCatalogPage() {
               className="text-black"
             />
 
-            {/* IMAGE PREVIEW */}
             {preview && (
               <img src={preview} className="h-32 w-full object-cover rounded" />
             )}
