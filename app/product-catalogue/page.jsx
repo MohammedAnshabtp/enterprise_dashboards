@@ -103,29 +103,35 @@ export default function ProductCatalogPage() {
   return (
     <div className="min-h-screen bg-gray-50 p-6 space-y-6">
       {/* HEADER */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div className="flex items-center gap-3 px-6 py-4">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 px-6 py-4">
+        {/* LEFT: Back + Title */}
+        <div className="flex items-center gap-3">
           <button
             onClick={() => router.back()}
             className="p-2 rounded-full hover:bg-gray-100 transition text-black"
           >
             <CircleChevronLeft size={26} />
           </button>
+
           <h1 className="text-2xl font-semibold text-gray-800">
             Product Catalog
           </h1>
         </div>
 
-        <p className="text-sm text-gray-500">
+        {/* CENTER: Description */}
+        <p className="text-sm text-gray-500 md:text-center">
           Manage your products and inventory
         </p>
 
-        <button
-          onClick={() => setOpen(true)}
-          className="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-lg"
-        >
-          + Add Product
-        </button>
+        {/* RIGHT: Action */}
+        <div className="flex justify-start md:justify-end">
+          <button
+            onClick={() => setOpen(true)}
+            className="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-lg"
+          >
+            + Add Product
+          </button>
+        </div>
       </div>
 
       {/* SEARCH */}
@@ -158,9 +164,11 @@ export default function ProductCatalogPage() {
 
               {/* 🖼️ Image */}
               <img
-                src={p.image || "/placeholder.png"}
+                src={
+                  p?.thumbnail?.url || p?.images?.[0]?.url || "/placeholder.png"
+                }
                 className="h-40 w-full object-cover"
-                alt=""
+                alt={p.name}
               />
 
               {/* 📦 Content */}

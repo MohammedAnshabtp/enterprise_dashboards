@@ -51,8 +51,8 @@ export const deleteSpaceCategoryService = (id) => {
 };
 
 // GET
-export const getSizeCategoriesService = () => {
-  return api.get(ENDPOINTS.GET_SIZE_CATEGORY);
+export const getSizeCategoriesService = (params) => {
+  return api.get(ENDPOINTS.GET_SIZE_CATEGORY, { params });
 };
 
 // CREATE

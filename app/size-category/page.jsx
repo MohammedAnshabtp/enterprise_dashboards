@@ -127,7 +127,7 @@ export default function SizeCategory() {
             onClick={(e) => e.stopPropagation()}
             className="bg-white rounded-xl p-6 w-full max-w-md space-y-4"
           >
-            <h2 className="text-lg font-semibold">
+            <h2 className="text-lg font-semibold text-black">
               {editId ? "Edit Size" : "Add Size"}
             </h2>
 
@@ -135,7 +135,7 @@ export default function SizeCategory() {
               placeholder="Size Name"
               value={form.name}
               onChange={(e) => setForm({ ...form, name: e.target.value })}
-              className="w-full border p-3 rounded"
+              className="w-full border p-3 rounded text-black"
             />
 
             <textarea
@@ -144,10 +144,10 @@ export default function SizeCategory() {
               onChange={(e) =>
                 setForm({ ...form, description: e.target.value })
               }
-              className="w-full border p-3 rounded"
+              className="w-full border p-3 rounded text-black"
             />
 
-            <div className="flex justify-end gap-3">
+            <div className="flex justify-end gap-3 text-black">
               <button onClick={() => setOpen(false)}>Cancel</button>
 
               <button

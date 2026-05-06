@@ -57,4 +57,20 @@ export const ENDPOINTS = {
   TOGGLE_WISHLIST: "/wishlist/toggle",
   REMOVE_WISHLIST: (id) => `/wishlist/${id}`,
   CLEAR_WISHLIST: "/wishlist/clear",
+
+  // TILE USAGE CATEGORY
+  GET_USAGE_CATEGORY: "/api/v1/category/usage",
+  GET_SINGLE_USAGE_CATEGORY: (id) => `/api/v1/category/usage/${id}`,
+  CREATE_USAGE_CATEGORY: "/api/v1/category/usage",
+  UPDATE_USAGE_CATEGORY: (id) => `/api/v1/category/usage/${id}`,
+  DELETE_USAGE_CATEGORY: (id) => `/api/v1/category/usage/${id}`,
+
+  // COUPONS (USER)
+  VALIDATE_COUPON: "/api/v1/coupon/validate",
+
+  // ADMIN COUPONS
+  GET_ADMIN_COUPONS: "/api/v1/coupon/admin",
+  CREATE_COUPON: "/api/v1/coupon/admin",
+  UPDATE_COUPON: (id) => `/api/v1/coupon/admin/${id}`,
+  DELETE_COUPON: (id) => `/api/v1/coupon/admin/${id}`,
 };

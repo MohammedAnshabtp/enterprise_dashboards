@@ -15,9 +15,13 @@ export default function Sidebar() {
     { label: "Space category", path: "/space-category" },
     { label: "Size category", path: "/size-category" },
     { label: "Product Style", path: "/product-style" },
+    { label: "Tile Usage", path: "/tile-usage" },
 
     { label: "Catalogue", path: "/catalogue" },
     { label: "Wish List", path: "/wishlist-page" },
+    { label: "Admin Coupon", path: "/admin-coupons" },
+
+    { label: "Coupon Validator", path: "/coupon-validator" },
     { label: "Staff reports", path: "/staff-reports" },
     { label: "Quotations", path: "/quotations" },
     { label: "Customer reviews", path: "/customer-reviews" },

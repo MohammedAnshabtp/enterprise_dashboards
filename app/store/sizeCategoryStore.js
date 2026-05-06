@@ -15,7 +15,10 @@ export const useSizeCategoryStore = create((set) => ({
     set({ loading: true });
 
     try {
-      const res = await getSizeCategoriesService();
+      const res = await getSizeCategoriesService({
+        page: 1,
+        limit: 100, // 🔥 increase this
+      });
 
       // 🔥 IMPORTANT FIX (same as space category)
       set({
