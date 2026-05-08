@@ -31,8 +31,8 @@ export const deleteAvatarService = () => {
 };
 
 // GET
-export const getSpaceCategoriesService = () => {
-  return api.get(ENDPOINTS.GET_SPACE_CATEGORY);
+export const getSpaceCategoriesService = (params) => {
+  return api.get(ENDPOINTS.GET_SPACE_CATEGORY, { params });
 };
 
 // CREATE

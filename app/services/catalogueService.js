@@ -13,7 +13,6 @@ export const createCatalogueService = (data) => {
   formData.append("name", data.name);
   formData.append("description", data.description || "");
 
-  // 🔥 REQUIRED
   if (data.file) {
     formData.append("file", data.file);
   }

@@ -3,8 +3,8 @@
 import api from "../lib/api/axios";
 import { ENDPOINTS } from "../lib/api/endpoint";
 
-export const getProductStyleService = () =>
-  api.get(ENDPOINTS.GET_PRODUCT_STYLE);
+export const getProductStyleService = (params) =>
+  api.get(ENDPOINTS.GET_PRODUCT_STYLE, { params });
 
 export const createProductStyleService = (data) =>
   api.post(ENDPOINTS.CREATE_PRODUCT_STYLE, data);

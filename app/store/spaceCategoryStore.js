@@ -6,76 +6,37 @@ import {
   deleteSpaceCategoryService,
 } from "../services/authServices";
 
-export const useSpaceCategoryStore = create((set, get) => ({
+export const useSpaceCategoryStore = create((set) => ({
   categories: [],
   loading: false,
-  error: null,
 
-  // ✅ FETCH
   fetchCategories: async () => {
     try {
       set({ loading: true });
 
-      const res = await getSpaceCategoriesService();
+      const res = await getSpaceCategoriesService({ page: 1, limit: 100 });
+
+      console.log("SPACE API RESPONSE", res.data);
 
       set({
-        categories: res?.data?.data?.data || [],
+        categories: res.data?.data?.data || res.data?.data || [],
         loading: false,
       });
     } catch (err) {
-      console.error("FETCH ERROR:", err.response?.data);
-      set({ error: err.response?.data, loading: false });
-    }
-  },
-
-  // ✅ CREATE
-  createCategory: async (data) => {
-    try {
-      set({ loading: true });
-
-      await createSpaceCategoryService(data);
-
-      // 🔥 auto refresh
-      await get().fetchCategories();
-
+      console.log(err);
       set({ loading: false });
-    } catch (err) {
-      console.error("CREATE ERROR:", err.response?.data);
-      set({ error: err.response?.data, loading: false });
-      throw err;
     }
   },
 
-  // ✅ UPDATE
-  updateCategory: async (id, data) => {
-    try {
-      set({ loading: true });
-
-      await updateSpaceCategoryService(id, data);
-
-      await get().fetchCategories();
-
-      set({ loading: false });
-    } catch (err) {
-      console.error("UPDATE ERROR:", err.response?.data);
-      set({ error: err.response?.data, loading: false });
-      throw err;
-    }
+  createCategory: async (payload) => {
+    await createSpaceCategoryService(payload);
   },
 
-  // ✅ DELETE
+  updateCategory: async (id, payload) => {
+    await updateSpaceCategoryService(id, payload);
+  },
+
   deleteCategory: async (id) => {
-    try {
-      set({ loading: true });
-
-      await deleteSpaceCategoryService(id);
-
-      await get().fetchCategories();
-
-      set({ loading: false });
-    } catch (err) {
-      console.error("DELETE ERROR:", err.response?.data);
-      set({ error: err.response?.data, loading: false });
-    }
+    await deleteSpaceCategoryService(id);
   },
 }));

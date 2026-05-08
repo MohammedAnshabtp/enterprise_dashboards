@@ -8,6 +8,7 @@ import { useWishlistStore } from "../store/wishlistStore"; // ✅ NEW
 import { CircleChevronLeft } from "lucide-react";
 import { useRouter } from "next/navigation";
 import WishlistButton from "../components/Wishlist-Button";
+import AddReviewModal from "../reviews/AddReviewModal";
 
 export default function ProductCatalogPage() {
   const { products, fetchProducts, createProduct, updateProduct } =
@@ -20,6 +21,8 @@ export default function ProductCatalogPage() {
   const [open, setOpen] = useState(false);
   const [editId, setEditId] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [reviewOpen, setReviewOpen] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState(null);
 
   const [query, setQuery] = useState({
     page: 1,
@@ -157,37 +160,88 @@ export default function ProductCatalogPage() {
               key={p._id}
               className="bg-white rounded-xl border shadow-sm hover:shadow-md transition overflow-hidden relative"
             >
-              {/* ❤️ Wishlist Button */}
+              {/* ❤️ Wishlist */}
               <div className="absolute top-2 right-2 z-10 bg-white/80 backdrop-blur rounded-full">
                 <WishlistButton productId={p._id} />
               </div>
 
-              {/* 🖼️ Image */}
-              <img
-                src={
-                  p?.thumbnail?.url || p?.images?.[0]?.url || "/placeholder.png"
-                }
-                className="h-40 w-full object-cover"
-                alt={p.name}
-              />
+              {/* 🖼️ IMAGE */}
+              <div className="relative">
+                <img
+                  src={
+                    p?.thumbnail?.url ||
+                    p?.images?.[0]?.url ||
+                    "/placeholder.png"
+                  }
+                  className="h-44 w-full object-cover"
+                  alt={p.name}
+                />
 
-              {/* 📦 Content */}
+                {/* 🚫 OUT OF STOCK */}
+                {p.stock === 0 && (
+                  <span className="absolute top-2 left-2 bg-red-500 text-white text-xs px-2 py-1 rounded">
+                    Out of Stock
+                  </span>
+                )}
+              </div>
+
+              {/* 📦 CONTENT */}
               <div className="p-4 space-y-2">
+                {/* NAME */}
                 <h3 className="font-semibold text-gray-800 line-clamp-1">
                   {p.name}
                 </h3>
 
-                <p className="text-sm text-gray-500 line-clamp-2">
-                  {p.description}
+                {/* BRAND */}
+                <p className="text-xs text-gray-500">{p.brand}</p>
+
+                {/* SIZE + FINISH */}
+                <div className="flex justify-between text-xs text-gray-600">
+                  <span>
+                    {p.dimensions?.length}×{p.dimensions?.width} ft
+                  </span>
+                  <span>{p.finish}</span>
+                </div>
+
+                {/* PRICE */}
+                <p className="text-lg font-bold text-green-600">
+                  ₹{p.price}
+                  <span className="text-xs text-gray-500"> /sqft</span>
                 </p>
 
-                <button
-                  onClick={() => handleEdit(p)}
-                  className="text-indigo-600 text-sm font-medium hover:underline"
-                >
-                  Edit →
-                </button>
+                {/* EXTRA INFO */}
+                <div className="flex justify-between text-xs text-gray-500">
+                  <span>Tiles/Box: {p.tileInBox || "-"}</span>
+                  <span>Stock: {p.stock}</span>
+                </div>
+
+                {/* ACTIONS */}
+                <div className="flex gap-2 pt-2">
+                  <button className="flex-1 bg-primary text-white text-sm py-2 rounded hover:opacity-90">
+                    Add to Cart
+                  </button>
+                  <button
+                    onClick={() => {
+                      setSelectedProduct(p);
+                      setReviewOpen(true);
+                    }}
+                    className="flex-1 border border-indigo-600 text-indigo-600 text-sm py-2 rounded hover:bg-indigo-50"
+                  >
+                    Add Review
+                  </button>
+                  <button
+                    onClick={() => handleEdit(p)}
+                    className="text-indigo-600 text-sm font-medium hover:underline"
+                  >
+                    Edit
+                  </button>
+                </div>
               </div>
+              <AddReviewModal
+                open={reviewOpen}
+                setOpen={setReviewOpen}
+                productId={selectedProduct?._id}
+              />
             </div>
           ))}
         </div>

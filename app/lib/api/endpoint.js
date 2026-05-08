@@ -73,4 +73,56 @@ export const ENDPOINTS = {
   CREATE_COUPON: "/api/v1/coupon/admin",
   UPDATE_COUPON: (id) => `/api/v1/coupon/admin/${id}`,
   DELETE_COUPON: (id) => `/api/v1/coupon/admin/${id}`,
+
+  // REVIEWS
+  GET_PRODUCT_REVIEWS: (productId) => `/api/v1/review/product/${productId}`,
+  CREATE_REVIEW: (productId) => `/api/v1/review/product/${productId}`,
+  UPDATE_REVIEW: (id) => `/api/v1/review/${id}`,
+  DELETE_REVIEW: (id) => `/api/v1/review/${id}`,
+
+  // ADMIN REVIEWS
+  GET_ADMIN_REVIEWS: "/api/v1/review/admin",
+
+  // BANNERS
+  GET_BANNERS: "/api/v1/banner",
+
+  // ADMIN BANNERS
+  GET_ADMIN_BANNERS: "/api/v1/banner/admin",
+  CREATE_BANNER: "/api/v1/banner/admin",
+  UPDATE_BANNER: (id) => `/api/v1/banner/admin/${id}`,
+  DELETE_BANNER: (id) => `/api/v1/banner/admin/${id}`,
+
+  // PRODUCTS
+  GET_PRODUCTS: "/api/v1/product",
+  CREATE_PRODUCT: "/api/v1/product/",
+  UPDATE_PRODUCT: (id) => `/api/v1/product/${id}`,
+
+  // FEATURED
+  GET_FEATURED_PRODUCTS: "/api/v1/product/featured-products",
+
+  // BULK UPLOAD
+  PRODUCT_BULK_UPLOAD: "/api/v1/product/bulk-upload",
+
+  // BULK UPLOAD HISTORY
+  PRODUCT_BULK_UPLOAD_HISTORY: "/api/v1/product/bulk-upload/history",
+
+  // BULK UPLOAD STATUS
+  PRODUCT_BULK_UPLOAD_STATUS: (jobId) => `/api/v1/product/bulk-upload/${jobId}`,
+
+  // BULK DELETE
+  PRODUCT_BULK_DELETE: "/api/v1/product/bulk-delete",
+
+  // BULK DELETE STATUS
+  PRODUCT_BULK_DELETE_STATUS: (jobId) => `/api/v1/product/bulk-delete/${jobId}`,
+
+  // BULK CATEGORY UPDATE
+  PRODUCT_BULK_CATEGORIES: "/api/v1/product/bulk-categories",
+  // SIZE CATEGORY
+  GET_SIZE_CATEGORIES: "/api/v1/size-category",
+
+  // SPACE CATEGORY
+  GET_SPACE_CATEGORIES: "/api/v1/space-category",
+
+  // TILE USAGE CATEGORY
+  GET_TILE_USAGE_CATEGORIES: "/api/v1/tile-usage-category",
 };

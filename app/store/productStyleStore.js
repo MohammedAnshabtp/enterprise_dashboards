@@ -16,7 +16,7 @@ export const useProductStyleStore = create((set) => ({
     set({ loading: true });
 
     try {
-      const res = await getProductStyleService();
+      const res = await getProductStyleService({ page: 1, limit: 100 });
 
       set({
         styles: res.data?.data?.data || [],

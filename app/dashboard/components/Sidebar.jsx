@@ -16,15 +16,18 @@ export default function Sidebar() {
     { label: "Size category", path: "/size-category" },
     { label: "Product Style", path: "/product-style" },
     { label: "Tile Usage", path: "/tile-usage" },
+    { label: "Admin reviews", path: "/admin-reviews" },
+    { label: "Banners", path: "/banners" },
+    { label: "Products", path: "/products" },
 
     { label: "Catalogue", path: "/catalogue" },
     { label: "Wish List", path: "/wishlist-page" },
     { label: "Admin Coupon", path: "/admin-coupons" },
+    { label: "Admin Banner", path: "/admin-banners" },
 
     { label: "Coupon Validator", path: "/coupon-validator" },
-    { label: "Staff reports", path: "/staff-reports" },
-    { label: "Quotations", path: "/quotations" },
-    { label: "Customer reviews", path: "/customer-reviews" },
+    // { label: "Staff reports", path: "/staff-reports" },
+    // { label: "Quotations", path: "/quotations" },
   ];
 
   const handleClick = () => {

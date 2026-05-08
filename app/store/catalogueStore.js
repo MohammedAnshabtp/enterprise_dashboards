@@ -16,17 +16,13 @@ export const useCatalogueStore = create((set, get) => ({
   // ✅ FETCH
   fetchCatalogues: async () => {
     try {
-      set({ loading: true });
-
       const res = await getCatalogueService();
 
       set({
-        catalogues: res?.data?.data?.data || [],
-        loading: false,
+        catalogues: res.data?.data?.data || [],
       });
     } catch (err) {
-      console.error("FETCH ERROR:", err.response?.data);
-      set({ error: err.response?.data, loading: false });
+      console.log("FETCH ERROR", err);
     }
   },
 

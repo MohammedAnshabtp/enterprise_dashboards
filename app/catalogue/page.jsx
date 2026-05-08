@@ -35,32 +35,80 @@ export default function CataloguePage() {
       return;
     }
 
-    // 🔥 File required ONLY for create
     if (!editId && !form.file) {
       alert("PDF file is required");
       return;
     }
 
     try {
+      const payload = {
+        name: form.name,
+        description: form.description,
+        file: form.file,
+      };
+
       if (editId) {
-        await updateCatalogue(editId, form);
+        await updateCatalogue(editId, payload);
       } else {
-        await createCatalogue(form);
+        await createCatalogue(payload);
       }
 
-      // ✅ Reset form properly
+      await fetchCatalogues();
+
       setForm({
         name: "",
         description: "",
         file: null,
+        existingFile: "",
       });
 
       setEditId(null);
       setOpen(false);
+
+      alert(
+        editId
+          ? "Catalogue updated successfully"
+          : "Catalogue created successfully"
+      );
     } catch (err) {
-      console.error("SUBMIT ERROR:", err.response?.data);
+      console.log(err);
+
       alert(err.response?.data?.message || "Something went wrong");
     }
+  };
+
+  // ✅ HANDLE INPUTS
+  const handleChange = (e) => {
+    const { name, value, files } = e.target;
+
+    // ✅ FILE HANDLING
+    if (name === "file") {
+      const file = files?.[0];
+
+      if (!file) return;
+
+      // ✅ CHECK PDF
+      if (
+        file.type !== "application/pdf" &&
+        !file.name.toLowerCase().endsWith(".pdf")
+      ) {
+        alert("Only PDF files are allowed");
+        return;
+      }
+
+      setForm((prev) => ({
+        ...prev,
+        file,
+      }));
+
+      return;
+    }
+
+    // ✅ NORMAL INPUTS
+    setForm((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
   };
 
   // ✅ EDIT FIXED
@@ -68,10 +116,10 @@ export default function CataloguePage() {
     setEditId(item._id);
 
     setForm({
-      name: item.name,
+      name: item.name || "",
       description: item.description || "",
-      file: null, // new file (if user uploads)
-      existingFile: item.file || item.pdf || item.url, // 👈 adjust key
+      file: null,
+      existingFile: item.file?.url || item.pdf?.url || item.url || "",
     });
 
     setOpen(true);
@@ -81,30 +129,6 @@ export default function CataloguePage() {
   const filtered = catalogues.filter((c) =>
     c?.name?.toLowerCase().includes(search.toLowerCase())
   );
-
-  // ✅ FILE HANDLING FIXED
-  const handleChange = (e) => {
-    const { name, value, files } = e.target;
-
-    if (name === "file") {
-      const file = files?.[0];
-      if (!file) return;
-
-      if (file.type !== "application/pdf") {
-        alert("Only PDF files are allowed");
-        return;
-      }
-
-      if (file.size > 5 * 1024 * 1024) {
-        alert("File must be less than 5MB");
-        return;
-      }
-
-      setForm((prev) => ({ ...prev, file }));
-    } else {
-      setForm((prev) => ({ ...prev, [name]: value }));
-    }
-  };
 
   return (
     <div className="min-h-screen bg-gray-50 p-6 space-y-6">
@@ -143,45 +167,89 @@ export default function CataloguePage() {
       </div>
 
       {/* LIST */}
-      <div className="bg-white rounded-xl border shadow-sm">
-        {filtered.length === 0 ? (
-          <div className="p-10 text-center text-gray-500">
-            No catalogues found
-          </div>
-        ) : (
-          <div className="divide-y">
-            {filtered.map((c) => (
-              <div
-                key={c._id}
-                className="flex justify-between items-center p-5 hover:bg-gray-50 transition"
-              >
-                <div>
-                  <h3 className="font-semibold text-gray-800">{c.name}</h3>
-                  <p className="text-sm text-gray-500">
-                    {c.description || "No description"}
-                  </p>
-                </div>
+      {/* LIST */}
+      {filtered.length === 0 ? (
+        <div className="bg-white rounded-2xl border p-16 text-center shadow-sm">
+          <p className="text-gray-500 text-sm">No catalogues found</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+          {filtered.map((c) => (
+            <div
+              key={c._id}
+              className="bg-white border rounded-2xl p-5 shadow-sm hover:shadow-lg transition-all duration-300"
+            >
+              {/* TOP */}
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <div className="h-14 w-14 rounded-xl bg-red-100 flex items-center justify-center text-red-600 text-xl font-bold">
+                    PDF
+                  </div>
 
-                <div className="flex gap-4 text-sm">
-                  <button
-                    onClick={() => handleEdit(c)}
-                    className="text-indigo-600 hover:underline"
-                  >
-                    Edit
-                  </button>
+                  <div>
+                    <h3 className="font-semibold text-gray-800 line-clamp-1">
+                      {c.name}
+                    </h3>
 
-                  <button
-                    onClick={() => deleteCatalogue(c._id)}
-                    className="text-red-500 hover:underline"
-                  >
-                    Delete
-                  </button>
+                    <p className="text-sm text-gray-500 line-clamp-2">
+                      {c.description || "No description available"}
+                    </p>
+                  </div>
                 </div>
               </div>
-            ))}
-          </div>
-        )}
-      </div>
+
+              {/* INFO */}
+              <div className="mt-5 space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-gray-500">File Size</span>
+
+                  <span className="font-medium text-gray-700">
+                    {c.file?.size
+                      ? `${(c.file.size / (1024 * 1024)).toFixed(2)} MB`
+                      : "N/A"}
+                  </span>
+                </div>
+
+                <div className="flex justify-between">
+                  <span className="text-gray-500">Created</span>
+
+                  <span className="font-medium text-gray-700">
+                    {new Date(c.createdAt).toLocaleDateString()}
+                  </span>
+                </div>
+              </div>
+
+              {/* ACTIONS */}
+              <div className="mt-6 flex items-center justify-between gap-3">
+                <a
+                  href={c.file?.url}
+                  target="_blank"
+                  className="flex-1 text-center bg-gray-100 hover:bg-gray-200 text-gray-700 py-2 rounded-lg text-sm font-medium transition"
+                >
+                  View PDF
+                </a>
+
+                <button
+                  onClick={() => handleEdit(c)}
+                  className="px-4 py-2 rounded-lg bg-indigo-50 text-indigo-600 hover:bg-indigo-100 text-sm font-medium transition"
+                >
+                  Edit
+                </button>
+
+                <button
+                  onClick={async () => {
+                    await deleteCatalogue(c._id);
+                    fetchCatalogues();
+                  }}
+                  className="px-4 py-2 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 text-sm font-medium transition"
+                >
+                  Delete
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* MODAL */}
       {open && (
@@ -219,7 +287,7 @@ export default function CataloguePage() {
                 Upload Catalogue (PDF)
               </label>
 
-              <div className="border-2 border-dashed border-gray-300 rounded-xl p-4 text-center hover:border-indigo-400 transition">
+              <div className="border-2 border-dashed border-gray-300 rounded-xl p-6 text-center hover:border-indigo-500 transition">
                 <input
                   type="file"
                   name="file"
@@ -233,12 +301,11 @@ export default function CataloguePage() {
                   htmlFor="fileUpload"
                   className="cursor-pointer flex flex-col items-center gap-2"
                 >
-                  <span className="text-sm text-gray-500">
-                    Click to upload or drag PDF here
-                  </span>
-                  <span className="text-xs text-gray-400">
-                    Only PDF files allowed
-                  </span>
+                  <p className="font-medium text-gray-700">
+                    Click to upload PDF
+                  </p>
+
+                  <p className="text-xs text-gray-400">Max size: 5MB</p>
                 </label>
               </div>
 

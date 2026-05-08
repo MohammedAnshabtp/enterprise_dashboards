@@ -5,24 +5,30 @@ const api = axios.create({
 });
 
 api.interceptors.request.use((config) => {
+  // ✅ TOKEN
   const token = localStorage.getItem("accessToken");
 
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
 
-  if (!(config.data instanceof FormData)) {
+  // ✅ FIX FOR FILE UPLOAD
+  if (config.data instanceof FormData) {
+    delete config.headers["Content-Type"];
+  } else {
     config.headers["Content-Type"] = "application/json";
   }
 
-  return config; // 🔥 REQUIRED
+  return config;
 });
 
 api.interceptors.response.use(
   (response) => response,
+
   (error) => {
     if (error.response?.status === 401) {
       localStorage.removeItem("accessToken");
+
       window.location.href = "/";
     }
 
