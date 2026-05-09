@@ -31,26 +31,6 @@ export const deleteAvatarService = () => {
 };
 
 // GET
-export const getSpaceCategoriesService = (params) => {
-  return api.get(ENDPOINTS.GET_SPACE_CATEGORY, { params });
-};
-
-// CREATE
-export const createSpaceCategoryService = (data) => {
-  return api.post(ENDPOINTS.CREATE_SPACE_CATEGORY, data);
-};
-
-// UPDATE
-export const updateSpaceCategoryService = (id, data) => {
-  return api.patch(ENDPOINTS.UPDATE_SPACE_CATEGORY(id), data);
-};
-
-// DELETE
-export const deleteSpaceCategoryService = (id) => {
-  return api.delete(ENDPOINTS.DELETE_SPACE_CATEGORY(id));
-};
-
-// GET
 export const getSizeCategoriesService = (params) => {
   return api.get(ENDPOINTS.GET_SIZE_CATEGORY, { params });
 };

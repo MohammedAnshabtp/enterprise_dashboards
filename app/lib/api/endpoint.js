@@ -29,8 +29,8 @@ export const ENDPOINTS = {
   UPDATE_PRODUCT: (id) => `/api/v1/product/${id}`,
 
   // SPACE CATEGORY
-  GET_SPACE_CATEGORY: "/api/v1/category/space/",
-  CREATE_SPACE_CATEGORY: "/api/v1/category/space/",
+  GET_SPACE_CATEGORIES: "/api/v1/category/space",
+  CREATE_SPACE_CATEGORY: "/api/v1/category/space",
   UPDATE_SPACE_CATEGORY: (id) => `/api/v1/category/space/${id}`,
   DELETE_SPACE_CATEGORY: (id) => `/api/v1/category/space/${id}`,
 
@@ -119,9 +119,6 @@ export const ENDPOINTS = {
   PRODUCT_BULK_CATEGORIES: "/api/v1/product/bulk-categories",
   // SIZE CATEGORY
   GET_SIZE_CATEGORIES: "/api/v1/size-category",
-
-  // SPACE CATEGORY
-  GET_SPACE_CATEGORIES: "/api/v1/space-category",
 
   // TILE USAGE CATEGORY
   GET_TILE_USAGE_CATEGORIES: "/api/v1/tile-usage-category",

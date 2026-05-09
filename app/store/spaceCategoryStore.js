@@ -4,39 +4,47 @@ import {
   createSpaceCategoryService,
   updateSpaceCategoryService,
   deleteSpaceCategoryService,
-} from "../services/authServices";
+} from "../services/categoryService";
 
 export const useSpaceCategoryStore = create((set) => ({
   categories: [],
+  pagination: {},
   loading: false,
 
-  fetchCategories: async () => {
+  fetchCategories: async (params = {}) => {
     try {
       set({ loading: true });
 
-      const res = await getSpaceCategoriesService({ page: 1, limit: 100 });
+      const res = await getSpaceCategoriesService(params);
 
       console.log("SPACE API RESPONSE", res.data);
 
       set({
-        categories: res.data?.data?.data || res.data?.data || [],
+        categories: Array.isArray(res.data?.data) ? res.data.data : [],
+
+        pagination: res.data?.pagination || {},
+
         loading: false,
       });
     } catch (err) {
       console.log(err);
-      set({ loading: false });
+
+      set({
+        categories: [],
+        loading: false,
+      });
     }
   },
 
   createCategory: async (payload) => {
-    await createSpaceCategoryService(payload);
+    return await createSpaceCategoryService(payload);
   },
 
   updateCategory: async (id, payload) => {
-    await updateSpaceCategoryService(id, payload);
+    return await updateSpaceCategoryService(id, payload);
   },
 
   deleteCategory: async (id) => {
-    await deleteSpaceCategoryService(id);
+    return await deleteSpaceCategoryService(id);
   },
 }));
