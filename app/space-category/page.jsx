@@ -177,7 +177,6 @@ export default function SpaceCategory() {
   return (
     <div className="min-h-screen bg-gray-100 p-6 space-y-6">
       {/* ================= HEADER ================= */}
-
       <div className="bg-white border rounded-3xl p-6 shadow-sm">
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-5">
           {/* LEFT */}
