@@ -423,51 +423,66 @@ function IntegrationRow({ entry, index }: { entry: IntegrationEntry; index: numb
   const theme       = CARD_THEME[category];
   const highlights  = getHighlights(entry);
 
+  const badgeEl = (
+    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold border shrink-0 ${statusStyle.bg} ${statusStyle.color}`}>
+      <span className={`w-1.5 h-1.5 rounded-full ${statusStyle.dot} ${category === "active" ? "animate-pulse" : ""}`} />
+      <StatusIndicatorIcon status={entry.status} size={11} />
+      <span className="capitalize">{entry.status ?? "unknown"}</span>
+    </span>
+  );
+
   return (
     <div
-      className={`rounded-xl border shadow-sm flex items-center gap-4 px-4 py-3
+      className={`rounded-xl border shadow-sm px-4 py-3 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4
                   hover:shadow-md transition-all duration-200
                   opacity-0 animate-[fadeSlideIn_0.35s_ease_forwards] ${theme.card}`}
       style={{ animationDelay: `${index * 40}ms` }}
     >
-      {/* Icon */}
-      <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 border ${theme.iconBg}`}>
-        <ServiceIcon name={entry.name} type={entry.type} size={17} className={theme.iconColor} />
+      {/* ── Mobile top row: icon + name + status ── */}
+      <div className="flex items-center gap-3 min-w-0">
+        <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 border ${theme.iconBg}`}>
+          <ServiceIcon name={entry.name} type={entry.type} size={17} className={theme.iconColor} />
+        </div>
+        <div className="min-w-0 flex-1 sm:flex-none sm:w-40">
+          <p className="font-bold text-slate-900 text-sm truncate leading-tight">{entry.name}</p>
+          {entry.type && (
+            <span className={`inline-block mt-0.5 px-1.5 py-0.5 rounded text-[9px] font-bold border uppercase tracking-wide ${getTypeStyle(entry.type)}`}>
+              {entry.type}
+            </span>
+          )}
+        </div>
+        {/* Status — mobile only (right-aligned in top row) */}
+        <div className="sm:hidden ml-auto">{badgeEl}</div>
       </div>
 
-      {/* Name + type */}
-      <div className="w-36 shrink-0 min-w-0">
-        <p className="font-bold text-slate-900 text-sm truncate">{entry.name}</p>
-        {entry.type && (
-          <span className={`inline-block px-1.5 py-0.5 rounded text-[9px] font-bold border uppercase tracking-wide ${getTypeStyle(entry.type)}`}>
-            {entry.type}
-          </span>
-        )}
-      </div>
-
-      {/* Metrics */}
-      <div className="flex-1 flex flex-wrap items-center gap-x-5 gap-y-1 min-w-0">
+      {/* ── Metrics ── */}
+      <div className="flex flex-wrap items-center gap-x-5 gap-y-2 flex-1 min-w-0 pl-12 sm:pl-0">
         {highlights.map((h) => {
           const { text, isTrue, isFalse, isUrl } = formatValue(h.val);
           return (
-            <div key={h.label} className="flex flex-col gap-0">
+            <div key={h.label} className="flex flex-col gap-0 min-w-0">
               <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wide">{h.label}</span>
               {isUrl ? (
-                <a href={text} target="_blank" rel="noreferrer" className="text-xs font-semibold text-blue-600 underline underline-offset-1 truncate">{displayUrl(text)}</a>
+                <a
+                  href={text}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-xs font-semibold text-blue-600 underline underline-offset-1 truncate max-w-[180px] sm:max-w-[220px]"
+                >
+                  {displayUrl(text)}
+                </a>
               ) : (
-                <span className={`text-xs font-bold ${isTrue ? "text-emerald-600" : isFalse ? "text-red-500" : "text-slate-800"}`}>{text}</span>
+                <span className={`text-xs font-bold truncate ${isTrue ? "text-emerald-600" : isFalse ? "text-red-500" : "text-slate-800"}`}>
+                  {text}
+                </span>
               )}
             </div>
           );
         })}
       </div>
 
-      {/* Status badge */}
-      <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold border shrink-0 ${statusStyle.bg} ${statusStyle.color}`}>
-        <span className={`w-1.5 h-1.5 rounded-full ${statusStyle.dot} ${category === "active" ? "animate-pulse" : ""}`} />
-        <StatusIndicatorIcon status={entry.status} size={11} />
-        <span className="capitalize">{entry.status ?? "unknown"}</span>
-      </span>
+      {/* Status — desktop only */}
+      <div className="hidden sm:block">{badgeEl}</div>
     </div>
   );
 }
@@ -601,26 +616,26 @@ export default function IntegrationsPage() {
 
           {/* Tabs + view toggle */}
           {!loading && !error && integrations.length > 0 && (
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              {/* Tab bar */}
-              <div className="flex items-center gap-1.5 bg-white border border-slate-200 rounded-2xl p-1.5 shadow-sm">
+            <div className="flex items-center justify-between gap-3">
+              {/* Tab bar — scrollable on mobile */}
+              <div className="flex items-center gap-1 bg-white border border-slate-200 rounded-2xl p-1.5 shadow-sm overflow-x-auto min-w-0 flex-1 sm:flex-none">
                 {TABS.map((tab) => {
                   const isActive = activeTab === tab.key;
                   return (
                     <button
                       key={tab.key}
                       onClick={() => setActiveTab(tab.key)}
-                      className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all duration-200 ${
+                      className={`flex items-center gap-1.5 px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all duration-200 whitespace-nowrap shrink-0 ${
                         isActive
                           ? "bg-[#f5c448] text-[#171612] shadow-sm"
                           : "text-slate-500 hover:text-slate-700 hover:bg-slate-50"
                       }`}
                     >
                       {tab.dot && (
-                        <span className={`w-1.5 h-1.5 rounded-full ${isActive ? "bg-[#171612]/40" : tab.dot}`} />
+                        <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${isActive ? "bg-[#171612]/40" : tab.dot}`} />
                       )}
                       {tab.label}
-                      <span className={`text-xs font-bold px-1.5 py-0.5 rounded-md ${
+                      <span className={`text-[10px] sm:text-xs font-bold px-1.5 py-0.5 rounded-md ${
                         isActive ? "bg-[#171612]/10 text-[#171612]" : "bg-slate-100 text-slate-500"
                       }`}>
                         {tabCounts[tab.key]}
