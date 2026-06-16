@@ -122,4 +122,7 @@ export const ENDPOINTS = {
 
   // TILE USAGE CATEGORY
   GET_TILE_USAGE_CATEGORIES: "/api/v1/tile-usage-category",
+
+  // ADMIN INTEGRATIONS
+  GET_INTEGRATIONS: "/api/v1/admin/integrations/",
 };
