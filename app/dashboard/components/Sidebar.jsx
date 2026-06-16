@@ -26,6 +26,7 @@ export default function Sidebar() {
     { label: "Admin Banner", path: "/admin-banners" },
 
     { label: "Coupon Validator", path: "/coupon-validator" },
+    { label: "System Health", path: "/integrations" },
     // { label: "Staff reports", path: "/staff-reports" },
     // { label: "Quotations", path: "/quotations" },
   ];
