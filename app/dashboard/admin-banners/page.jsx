@@ -1,39 +1,22 @@
-﻿"use client";
+"use client";
 
-import { useEffect, useState } from "react";
-import { useBannerStore } from "../../store/bannerStore";
+import { useState } from "react";
+import { useAdminBanners, useCreateBanner, useDeleteBanner } from "../../hooks/useBanners";
+
+const EMPTY_FORM = { title: "", imageAlt: "", link: "", isActive: true, displayOrder: 0, image: null };
 
 export default function AdminBannersPage() {
-  const { banners, fetchAdminBanners, createBanner, deleteBanner } =
-    useBannerStore();
+  const { data: banners = [], isLoading } = useAdminBanners();
+  const createBanner = useCreateBanner();
+  const deleteBanner = useDeleteBanner();
 
-  const [form, setForm] = useState({
-    title: "",
-    imageAlt: "",
-    link: "",
-    isActive: true,
-    displayOrder: 0,
-    image: null,
-  });
+  const [form, setForm] = useState(EMPTY_FORM);
 
-  useEffect(() => {
-    fetchAdminBanners();
-  }, []);
-
-  const handleSubmit = async () => {
-    try {
-      await createBanner(form);
-
-      fetchAdminBanners();
-
-      setForm({
-        title: "",
-        description: "",
-        file: null,
-      });
-    } catch (err) {
-      console.log(err);
-    }
+  const handleSubmit = () => {
+    if (!form.title.trim()) return;
+    createBanner.mutate(form, {
+      onSuccess: () => setForm(EMPTY_FORM),
+    });
   };
 
   return (
@@ -45,74 +28,64 @@ export default function AdminBannersPage() {
         <input
           placeholder="Title"
           value={form.title}
-          onChange={(e) =>
-            setForm({
-              ...form,
-              title: e.target.value,
-            })
-          }
+          onChange={(e) => setForm({ ...form, title: e.target.value })}
           className="w-full border p-3 rounded-lg"
         />
 
         <textarea
           placeholder="Description"
-          value={form.description}
-          onChange={(e) =>
-            setForm({
-              ...form,
-              description: e.target.value,
-            })
-          }
+          value={form.description || ""}
+          onChange={(e) => setForm({ ...form, description: e.target.value })}
           className="w-full border p-3 rounded-lg"
         />
 
         <input
           type="file"
           accept="image/*"
-          onChange={(e) =>
-            setForm({
-              ...form,
-              image: e.target.files[0],
-            })
-          }
+          onChange={(e) => setForm({ ...form, image: e.target.files[0] })}
         />
 
         <button
           onClick={handleSubmit}
-          className="bg-indigo-600 text-white px-5 py-2 rounded-lg"
+          disabled={createBanner.isPending}
+          className="bg-indigo-600 text-white px-5 py-2 rounded-lg disabled:opacity-60"
         >
-          Create Banner
+          {createBanner.isPending ? "Creating..." : "Create Banner"}
         </button>
       </div>
 
       {/* LIST */}
-      <div className="grid md:grid-cols-3 gap-5">
-        {banners.map((banner) => (
-          <div
-            key={banner._id}
-            className="bg-white border rounded-xl overflow-hidden"
-          >
-            <img
-              src={banner.image?.url}
-              alt=""
-              className="h-48 w-full object-cover"
-            />
+      {isLoading ? (
+        <p className="text-center text-gray-500">Loading...</p>
+      ) : (
+        <div className="grid md:grid-cols-3 gap-5">
+          {banners.map((banner) => (
+            <div
+              key={banner._id}
+              className="bg-white border rounded-xl overflow-hidden"
+            >
+              <img
+                src={banner.image?.url}
+                alt=""
+                className="h-48 w-full object-cover"
+              />
 
-            <div className="p-4">
-              <h3 className="font-semibold">{banner.title}</h3>
+              <div className="p-4">
+                <h3 className="font-semibold">{banner.title}</h3>
+                <p className="text-sm text-gray-500">{banner.description}</p>
 
-              <p className="text-sm text-gray-500">{banner.description}</p>
-
-              <button
-                onClick={() => deleteBanner(banner._id)}
-                className="mt-3 text-red-500"
-              >
-                Delete
-              </button>
+                <button
+                  onClick={() => deleteBanner.mutate(banner._id)}
+                  disabled={deleteBanner.isPending}
+                  className="mt-3 text-red-500 disabled:opacity-60"
+                >
+                  Delete
+                </button>
+              </div>
             </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

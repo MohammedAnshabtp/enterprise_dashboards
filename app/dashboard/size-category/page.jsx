@@ -1,64 +1,75 @@
-﻿"use client";
+"use client";
 
-import { useEffect, useState } from "react";
-import BackButton from "../components/BackButton";
-import { useSizeCategoryStore } from "../../store/sizeCategoryStore";
-import { Plus } from "lucide-react";
-import { ChevronLeft } from "lucide-react";
+import { useState } from "react";
+import { Plus, ChevronLeft } from "lucide-react";
+import toast from "react-hot-toast";
+import {
+  useSizeCategories,
+  useCreateSizeCategory,
+  useUpdateSizeCategory,
+  useDeleteSizeCategory,
+} from "../../hooks/useCategories";
+
+const EMPTY_FORM = { name: "", description: "" };
 
 export default function SizeCategory() {
-  const {
-    categories,
-    pagination = {},
-    fetchCategories,
-    createCategory,
-    updateCategory,
-    deleteCategory,
-  } = useSizeCategoryStore();
+  const { data: categories = [], isLoading } = useSizeCategories({ page: 1, limit: 100 });
+  const createCategory = useCreateSizeCategory();
+  const updateCategory = useUpdateSizeCategory();
+  const deleteCategory = useDeleteSizeCategory();
 
   const [open, setOpen] = useState(false);
   const [editId, setEditId] = useState(null);
+  const [form, setForm] = useState(EMPTY_FORM);
 
-  const [form, setForm] = useState({
-    name: "",
-    description: "",
-  });
-
-  useEffect(() => {
-    fetchCategories();
-  }, []);
+  const resetForm = () => {
+    setForm(EMPTY_FORM);
+    setEditId(null);
+  };
 
   const handleSubmit = async () => {
-    if (!form.name) return alert("Name required");
-
-    if (editId) {
-      await updateCategory(editId, form);
-    } else {
-      await createCategory(form);
+    if (!form.name) {
+      toast.error("Name is required");
+      return;
     }
 
-    setForm({ name: "", description: "" });
-    setEditId(null);
-    setOpen(false);
-    fetchCategories();
+    if (editId) {
+      updateCategory.mutate(
+        { id: editId, data: form },
+        {
+          onSuccess: () => {
+            resetForm();
+            setOpen(false);
+          },
+        }
+      );
+    } else {
+      createCategory.mutate(form, {
+        onSuccess: () => {
+          resetForm();
+          setOpen(false);
+        },
+      });
+    }
   };
 
   const handleEdit = (c) => {
     setEditId(c._id);
-    setForm({
-      name: c.name,
-      description: c.description || "",
-    });
+    setForm({ name: c.name, description: c.description || "" });
     setOpen(true);
   };
+
+  const handleDelete = (id) => {
+    deleteCategory.mutate(id);
+  };
+
+  const isPending = createCategory.isPending || updateCategory.isPending;
 
   return (
     <div className="min-h-screen bg-gray-50 p-6 space-y-6">
       {/* HEADER */}
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-5 border p-4 rounded-2xl">
-        {/* LEFT */}
         <div className="flex items-center gap-4">
-          {/* BACK BUTTON */}
           <button
             onClick={() => window.history.back()}
             className="h-12 w-12 rounded-2xl bg-white border border-gray-200 flex items-center justify-center shadow-sm hover:shadow-md hover:bg-gray-50 transition-all"
@@ -66,7 +77,6 @@ export default function SizeCategory() {
             <ChevronLeft size={20} className="text-gray-700" />
           </button>
 
-          {/* TITLE */}
           <div className="flex items-center gap-3">
             <div className="h-11 w-11 rounded-2xl bg-indigo-100 flex items-center justify-center">
               <span className="text-indigo-600 text-xl">🏠</span>
@@ -76,7 +86,6 @@ export default function SizeCategory() {
               <h1 className="text-3xl font-bold text-gray-900 tracking-tight">
                 Size Categories
               </h1>
-
               <p className="text-sm text-gray-500 mt-1">
                 Manage product size categories
               </p>
@@ -84,18 +93,14 @@ export default function SizeCategory() {
           </div>
         </div>
 
-        {/* RIGHT */}
         <div className="flex items-center gap-3">
-          {/* TOTAL */}
           <div className="hidden md:flex flex-col px-5 py-3 rounded-2xl bg-gray-50 border">
             <span className="text-xs text-gray-500">Total Categories</span>
-
             <span className="text-xl font-bold text-gray-800">
-              {pagination?.totalItems || 0}
+              {categories.length}
             </span>
           </div>
 
-          {/* ADD BUTTON */}
           <button
             onClick={() => {
               resetForm();
@@ -111,7 +116,9 @@ export default function SizeCategory() {
 
       {/* LIST */}
       <div className="bg-white rounded-xl border shadow-md">
-        {categories.length === 0 ? (
+        {isLoading ? (
+          <p className="p-6 text-center text-gray-500">Loading...</p>
+        ) : categories.length === 0 ? (
           <p className="p-6 text-center text-gray-500">
             No size categories found
           </p>
@@ -138,10 +145,7 @@ export default function SizeCategory() {
                   </button>
 
                   <button
-                    onClick={() => {
-                      deleteCategory(c._id);
-                      fetchCategories();
-                    }}
+                    onClick={() => handleDelete(c._id)}
                     className="text-red-500 hover:underline"
                   >
                     Delete
@@ -157,7 +161,7 @@ export default function SizeCategory() {
       {open && (
         <div
           onClick={() => setOpen(false)}
-          className="fixed inset-0 bg-black/40 flex justify-center items-center"
+          className="fixed inset-0 bg-black/40 flex justify-center items-center z-50"
         >
           <div
             onClick={(e) => e.stopPropagation()}
@@ -188,9 +192,10 @@ export default function SizeCategory() {
 
               <button
                 onClick={handleSubmit}
-                className="bg-indigo-600 text-white px-4 py-2 rounded"
+                disabled={isPending}
+                className="bg-indigo-600 text-white px-4 py-2 rounded disabled:opacity-60"
               >
-                {editId ? "Update" : "Create"}
+                {isPending ? "Saving..." : editId ? "Update" : "Create"}
               </button>
             </div>
           </div>

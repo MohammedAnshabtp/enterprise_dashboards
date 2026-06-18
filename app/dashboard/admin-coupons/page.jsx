@@ -1,86 +1,62 @@
-﻿"use client";
+"use client";
 
-import { useEffect, useState } from "react";
-import { useCouponStore } from "../../store/useCouponStore";
+import { useState } from "react";
+import toast from "react-hot-toast";
+import {
+  useAdminCoupons,
+  useCreateCoupon,
+  useDeleteCoupon,
+} from "../../hooks/useCoupons";
+import dayjs from "../../lib/dayjs";
+
+const EMPTY_FORM = {
+  code: "",
+  type: "percentage",
+  value: "",
+  minOrderAmount: "",
+  maxDiscount: "",
+  validFrom: "",
+  validUntil: "",
+  usageLimit: "",
+};
 
 export default function AdminCouponsPage() {
-  const { coupons, fetchCoupons, createCoupon, deleteCoupon } =
-    useCouponStore();
+  const { data: coupons = [], isLoading } = useAdminCoupons({ page: 1, limit: 50 });
+  const createCoupon = useCreateCoupon();
+  const deleteCoupon = useDeleteCoupon();
 
-  const [form, setForm] = useState({
-    code: "",
-    type: "percentage",
-    value: "",
-    minOrderAmount: "",
-    maxDiscount: "",
-    validFrom: "",
-    validUntil: "",
-    usageLimit: "",
-  });
+  const [form, setForm] = useState(EMPTY_FORM);
 
-  useEffect(() => {
-    fetchCoupons();
-  }, []);
-
-  // ✅ CREATE COUPON
-  const handleCreate = async () => {
-    try {
-      // 🔥 Validation
-      if (!form.code || !form.value) {
-        return alert("Code & Value required");
-      }
-
-      if (
-        form.validFrom &&
-        form.validUntil &&
-        new Date(form.validUntil) < new Date(form.validFrom)
-      ) {
-        return alert("Invalid date range");
-      }
-
-      const payload = {
-        code: form.code,
-        type: form.type,
-        value: Number(form.value),
-        minOrderAmount: Number(form.minOrderAmount) || 0,
-        maxDiscount: Number(form.maxDiscount) || 0,
-        usageLimit: Number(form.usageLimit) || 0,
-      };
-
-      // ✅ Correct backend fields
-      if (form.validFrom) payload.startsAt = form.validFrom;
-      if (form.validUntil) payload.expiresAt = form.validUntil;
-
-      await createCoupon(payload);
-
-      // ✅ Reset form
-      setForm({
-        code: "",
-        type: "percentage",
-        value: "",
-        minOrderAmount: "",
-        maxDiscount: "",
-        validFrom: "",
-        validUntil: "",
-        usageLimit: "",
-      });
-
-      fetchCoupons();
-      alert("Coupon created successfully");
-    } catch (err) {
-      console.log(err.response?.data);
-      alert(err.response?.data?.message || "Failed");
+  const handleCreate = () => {
+    if (!form.code || !form.value) {
+      toast.error("Code and value are required");
+      return;
     }
-  };
 
-  const handleDelete = async (id) => {
-    try {
-      await deleteCoupon(id);
-      fetchCoupons(); // 🔥 IMPORTANT
-    } catch (err) {
-      console.log(err.response?.data);
-      alert(err.response?.data?.message || "Delete failed");
+    if (
+      form.validFrom &&
+      form.validUntil &&
+      dayjs(form.validUntil).isBefore(dayjs(form.validFrom))
+    ) {
+      toast.error("End date must be after start date");
+      return;
     }
+
+    const payload = {
+      code: form.code,
+      type: form.type,
+      value: Number(form.value),
+      minOrderAmount: Number(form.minOrderAmount) || 0,
+      maxDiscount: Number(form.maxDiscount) || 0,
+      usageLimit: Number(form.usageLimit) || 0,
+    };
+
+    if (form.validFrom) payload.startsAt = form.validFrom;
+    if (form.validUntil) payload.expiresAt = form.validUntil;
+
+    createCoupon.mutate(payload, {
+      onSuccess: () => setForm(EMPTY_FORM),
+    });
   };
 
   return (
@@ -138,7 +114,6 @@ export default function AdminCouponsPage() {
             value={form.validFrom}
             onChange={(e) => setForm({ ...form, validFrom: e.target.value })}
           />
-
           <input
             className="w-full border p-2 rounded"
             type="date"
@@ -157,15 +132,18 @@ export default function AdminCouponsPage() {
 
         <button
           onClick={handleCreate}
-          className="bg-green-600 text-white px-4 py-2 rounded w-full"
+          disabled={createCoupon.isPending}
+          className="bg-green-600 text-white px-4 py-2 rounded w-full disabled:opacity-60"
         >
-          Create Coupon
+          {createCoupon.isPending ? "Creating..." : "Create Coupon"}
         </button>
       </div>
 
       {/* LIST */}
       <div className="bg-white border rounded-xl divide-y">
-        {coupons.length === 0 ? (
+        {isLoading ? (
+          <p className="p-4 text-center text-gray-500">Loading...</p>
+        ) : coupons.length === 0 ? (
           <p className="p-4 text-center text-gray-500">No coupons found</p>
         ) : (
           coupons.map((c) => (
@@ -178,13 +156,16 @@ export default function AdminCouponsPage() {
                     : `₹${c.value} OFF`}
                 </p>
                 <p className="text-xs text-gray-400">
-                  {c.startsAt?.slice(0, 10)} → {c.expiresAt?.slice(0, 10)}
+                  {c.startsAt ? dayjs(c.startsAt).format("DD MMM YYYY") : "—"}{" "}
+                  →{" "}
+                  {c.expiresAt ? dayjs(c.expiresAt).format("DD MMM YYYY") : "—"}
                 </p>
               </div>
 
               <button
-                onClick={() => handleDelete(c._id)}
-                className="text-red-500"
+                onClick={() => deleteCoupon.mutate(c._id)}
+                disabled={deleteCoupon.isPending}
+                className="text-red-500 disabled:opacity-60"
               >
                 Delete
               </button>

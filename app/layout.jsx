@@ -1,5 +1,6 @@
 import "./globals.css";
 import { Toaster } from "react-hot-toast";
+import Providers from "./providers";
 
 export const metadata = {
   title: "Angle Enterprise — Admin Dashboard",
@@ -10,7 +11,7 @@ export default function RootLayout({ children }) {
   return (
     <html lang="en">
       <body className="bg-background text-text-primary antialiased">
-        {children}
+        <Providers>{children}</Providers>
         <Toaster
           position="top-right"
           toastOptions={{
