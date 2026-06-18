@@ -1,3 +1,12 @@
+const inrFormatter = new Intl.NumberFormat("en-IN", {
+  style: "currency",
+  currency: "INR",
+  minimumFractionDigits: 0,
+  maximumFractionDigits: 2,
+});
+
+export const formatINR = (value) => inrFormatter.format(Number(value) || 0);
+
 export const buildUrl = (endpoint, query = {}) => {
   const params = new URLSearchParams(query).toString();
   return params ? `${endpoint}?${params}` : endpoint;

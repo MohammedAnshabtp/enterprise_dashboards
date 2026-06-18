@@ -1,4 +1,5 @@
 "use client";
+
 import {
   Briefcase,
   EyeOff,
@@ -8,393 +9,308 @@ import {
   Phone,
   ShieldCheck,
   User,
+  Eye,
 } from "lucide-react";
 import React, { useState } from "react";
+import { useForm } from "react-hook-form";
+import { yupResolver } from "@hookform/resolvers/yup";
+import * as yup from "yup";
+import toast from "react-hot-toast";
 import api from "../../lib/api/axios";
 import { forgotPassword, updatePassword } from "../../services/authServices";
-import { Eye } from "lucide-react";
+import { Input } from "../../components/ui/input";
+import { Label } from "../../components/ui/label";
+import { Button } from "../../components/ui/button";
+import ButtonLoader from "../../components/ui/ButtonLoader";
+
+const loginSchema = yup.object({
+  email:    yup.string().email("Enter a valid email address").required("Email is required"),
+  password: yup.string().min(6, "Password must be at least 6 characters").required("Password is required"),
+});
+
+const registerSchema = yup.object({
+  username:     yup.string().min(2, "Name must be at least 2 characters").required("Full name is required"),
+  mobileNumber: yup.string().matches(/^\d{7,15}$/, "Enter a valid mobile number").required("Mobile number is required"),
+  occupation:   yup.string().required("Please select your occupation"),
+  email:        yup.string().email("Enter a valid email address").required("Email is required"),
+  password:     yup.string().min(8, "Password must be at least 8 characters").required("Password is required"),
+});
+
+const forgotEmailSchema = yup.object({
+  email: yup.string().email("Enter a valid email address").required("Email is required"),
+});
+
+const resetSchema = yup.object({
+  newPassword:     yup.string().min(8, "Password must be at least 8 characters").required("New password is required"),
+  confirmPassword: yup
+    .string()
+    .oneOf([yup.ref("newPassword")], "Passwords do not match")
+    .required("Please confirm your password"),
+});
 
 export default function LoginPage() {
   const [isLogin, setIsLogin] = useState(true);
-  const [loading, setLoading] = useState(false);
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [showForgot, setShowForgot] = useState(false);
-  const [step, setStep] = useState("email");
-  const [email, setEmail] = useState("");
-  const [newPassword, setNewPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [showForgot, setShowForgot] = useState(false);
+  const [forgotStep, setForgotStep] = useState("email");
+  const [forgotEmail, setForgotEmail] = useState("");
   const [showOtpModal, setShowOtpModal] = useState(false);
   const [otp, setOtp] = useState("");
+  const [otpLoading, setOtpLoading] = useState(false);
 
-  // Form States
-  const [formData, setFormData] = useState({
-    username: "",
-    email: "",
-    password: "",
-    mobileNumber: "",
-    occupation: "",
-  });
+  const schema = isLogin ? loginSchema : registerSchema;
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+    reset,
+  } = useForm({ resolver: yupResolver(schema) });
 
-  const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
-  };
+  const {
+    register: forgotReg,
+    handleSubmit: handleForgotSubmit,
+    formState: { errors: forgotErrors, isSubmitting: forgotSubmitting },
+    getValues: getForgotValues,
+    reset: resetForgot,
+  } = useForm({ resolver: yupResolver(forgotEmailSchema) });
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setLoading(true);
+  const {
+    register: resetReg,
+    handleSubmit: handleResetSubmit,
+    formState: { errors: resetErrors, isSubmitting: resetSubmitting },
+  } = useForm({ resolver: yupResolver(resetSchema) });
 
+  const onSubmit = async (data) => {
     try {
       if (isLogin) {
-        // ✅ LOGIN FLOW (correct already)
         const res = await api.post("/api/v1/auth/login", {
-          email: formData.email,
-          password: formData.password,
+          email: data.email,
+          password: data.password,
         });
-
         localStorage.setItem("accessToken", res.data?.data?.accessToken);
-
+        toast.success("Welcome back!");
         window.location.href = "/dashboard";
       } else {
-        // ✅ STEP 1: ONLY SEND OTP (NOT SIGNUP)
-        await api.post("/api/v1/auth/signup/email/get-otp", {
-          email: formData.email,
-        });
-
-        // alert("OTP sent to your email");
-
-        // ✅ Save form data temporarily
-        localStorage.setItem("signupData", JSON.stringify(formData));
-
-        // 👉 Go to OTP page
+        await api.post("/api/v1/auth/signup/email/get-otp", { email: data.email });
+        localStorage.setItem("signupData", JSON.stringify(data));
         setShowOtpModal(true);
+        toast.success("OTP sent to your email");
       }
     } catch (err) {
-      console.error(err?.response?.data || err.message);
-      alert(err?.response?.data?.message || "Something went wrong");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // const handleVerifyOtp = async () => {
-  //   setLoading(true);
-
-  //   try {
-  //     const signupData = JSON.parse(localStorage.getItem("signupData"));
-
-  //     // ✅ Verify OTP
-  //     await api.post("/api/v1/auth/verify/email/otp", {
-  //       email: signupData.email,
-  //       otp,
-  //     });
-
-  //     // ✅ Create account
-  //     await api.post("/api/v1/auth/signup", signupData);
-
-  //     // alert("Account created successfully");
-
-  //     localStorage.removeItem("signupData");
-
-  //     setShowOtpModal(false);
-  //     setIsLogin(true); // switch to login
-  //   } catch (err) {
-  //     alert(err?.response?.data?.message || "Invalid OTP");
-  //   } finally {
-  //     setLoading(false);
-  //   }
-  // };
-
-  const handleSendOtp = async () => {
-    try {
-      setLoading(true);
-
-      const res = await forgotPassword(email);
-
-      if (res?.data?.success) {
-        alert("OTP sent successfully");
-        setStep("reset");
-      }
-    } catch (err) {
-      console.error(err);
-      alert(err?.response?.data?.message || "Failed to send OTP");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleUpdatePassword = async () => {
-    try {
-      setLoading(true);
-
-      const res = await updatePassword({
-        email,
-        newPassword,
-        confirmPassword,
-      });
-
-      if (res?.data?.success) {
-        alert("Password updated successfully");
-
-        setShowForgot(false);
-        setStep("email");
-
-        // optional reset fields
-        setEmail("");
-        setNewPassword("");
-        setConfirmPassword("");
-      } else {
-        alert(res?.data?.message);
-      }
-    } catch (err) {
-      console.error(err);
-      alert(err?.response?.data?.message || "Something went wrong");
-    } finally {
-      setLoading(false);
+      toast.error(err?.response?.data?.message ?? "Something went wrong. Please try again.");
     }
   };
 
   const handleVerifyOtp = async () => {
-    setLoading(true);
-
+    if (!otp.trim()) {
+      toast.error("Please enter the OTP");
+      return;
+    }
+    setOtpLoading(true);
     try {
       const stored = localStorage.getItem("signupData");
-      if (!stored) throw new Error("No signup data found");
-
+      if (!stored) throw new Error("Session expired. Please try again.");
       const signupData = JSON.parse(stored);
 
-      await api.post("/api/v1/auth/verify/email/otp", {
-        email: signupData.email,
-        otp,
-      });
-
+      await api.post("/api/v1/auth/verify/email/otp", { email: signupData.email, otp });
       await api.post("/api/v1/auth/signup", signupData);
 
       localStorage.removeItem("signupData");
-
       setShowOtpModal(false);
       setIsLogin(true);
+      reset();
+      toast.success("Account created! Please sign in.");
     } catch (err) {
-      alert(err?.response?.data?.message || "Invalid OTP");
+      toast.error(err?.response?.data?.message ?? "Invalid OTP. Please try again.");
     } finally {
-      setLoading(false);
+      setOtpLoading(false);
     }
   };
 
+  const onForgotEmail = async (data) => {
+    try {
+      const res = await forgotPassword(data.email);
+      if (res?.data?.success) {
+        setForgotEmail(data.email);
+        setForgotStep("reset");
+        toast.success("OTP sent to your email");
+      }
+    } catch (err) {
+      toast.error(err?.response?.data?.message ?? "Failed to send OTP. Please try again.");
+    }
+  };
+
+  const onResetPassword = async (data) => {
+    try {
+      const res = await updatePassword({
+        email: forgotEmail,
+        newPassword: data.newPassword,
+        confirmPassword: data.confirmPassword,
+      });
+      if (res?.data?.success) {
+        toast.success("Password updated successfully! Please sign in.");
+        setShowForgot(false);
+        setForgotStep("email");
+        resetForgot();
+      } else {
+        toast.error(res?.data?.message ?? "Failed to update password.");
+      }
+    } catch (err) {
+      toast.error(err?.response?.data?.message ?? "Something went wrong.");
+    }
+  };
+
+  const fieldError = (msg) => msg ? (
+    <p className="text-xs text-[#EF4444] mt-1">{msg}</p>
+  ) : null;
+
   return (
-    <div className="min-h-screen bg-background-light font-display flex flex-col justify-center items-center p-4">
-      {/* Brand Logo */}
-      <div className="mb-8 flex items-center gap-2 text-black">
-        <LayoutGrid size={32} />
-        <h1 className="text-2xl font-bold tracking-tight uppercase text-black">
-          Ar Tiles Emporium
-        </h1>
+    <div className="min-h-screen bg-[#F8FAFC] flex flex-col justify-center items-center p-4">
+      {/* Brand logo */}
+      <div className="mb-8 flex items-center gap-2.5">
+        <div className="w-10 h-10 rounded-xl bg-linear-to-br from-[#6366F1] to-[#4F46E5] flex items-center justify-center shadow-[0_4px_12px_rgb(99_102_241/0.3)]">
+          <LayoutGrid size={20} className="text-white" />
+        </div>
+        <h1 className="text-xl font-bold tracking-tight text-[#0F172A]">Ar Tiles Emporium</h1>
       </div>
 
-      <main className="w-full max-w-md bg-white rounded-2xl shadow-2xl border border-primary/10 overflow-hidden transition-all duration-500">
-        {/* Header Section */}
-        <div className="bg-primary/5 p-8 text-center border-b border-primary/5">
-          <h2 className="text-3xl font-extrabold text-slate-900">
-            {isLogin ? "Welcome Back" : "Create Account"}
+      <main className="w-full max-w-md bg-white rounded-2xl shadow-[0_20px_50px_-12px_rgb(0_0_0/0.12)] border border-[#E2E8F0] overflow-hidden">
+        {/* Header */}
+        <div className="px-8 py-7 border-b border-[#F1F5F9] text-center">
+          <h2 className="text-2xl font-bold text-[#0F172A] tracking-tight">
+            {isLogin ? "Welcome back" : "Create account"}
           </h2>
-          <p className="text-slate-500 mt-2 text-sm">
+          <p className="text-sm text-[#64748B] mt-1">
             {isLogin
-              ? "Enter your credentials to access your luxury dashboard."
-              : "Join our exclusive circle for premium architectural surfaces."}
+              ? "Sign in to access your dashboard"
+              : "Join our exclusive circle for premium tiles"}
           </p>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-8 space-y-4">
+        <form onSubmit={handleSubmit(onSubmit)} className="px-8 py-6 space-y-4">
           {!isLogin && (
             <>
-              {/* Username Field */}
-              <div className="space-y-1">
-                <label className="text-xs font-bold uppercase text-slate-400 ml-1">
-                  Full Name
-                </label>
+              <div className="space-y-1.5">
+                <Label htmlFor="username">Full Name</Label>
                 <div className="relative">
-                  <User
-                    className="absolute left-3 top-1/2 -translate-y-1/2 text-primary"
-                    size={18}
-                  />
-                  <input
-                    name="username"
-                    type="text"
-                    placeholder="Enter Your Username"
-                    required
-                    className="w-full pl-10 pr-4 py-3 bg-slate-50 border-none rounded-xl focus:ring-2 focus:ring-primary/50 transition-all text-slate-400"
-                    onChange={handleChange}
-                  />
+                  <User size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#94A3B8]" />
+                  <Input id="username" className="pl-9" placeholder="John Doe" {...register("username")} />
                 </div>
+                {fieldError(errors.username?.message)}
               </div>
 
-              {/* Mobile Number Field */}
-              <div className="space-y-1">
-                <label className="text-xs font-bold uppercase text-slate-400 ml-1">
-                  Mobile Number
-                </label>
+              <div className="space-y-1.5">
+                <Label htmlFor="mobileNumber">Mobile Number</Label>
                 <div className="relative">
-                  <Phone
-                    className="absolute left-3 top-1/2 -translate-y-1/2 text-primary"
-                    size={18}
-                  />
-                  <input
-                    name="mobileNumber"
-                    type="tel"
-                    placeholder="Enter your mobile number"
-                    required
-                    className="w-full pl-10 pr-4 py-3 bg-slate-50 border-none rounded-xl focus:ring-2 focus:ring-primary/50 transition-all text-slate-400"
-                    onChange={handleChange}
-                  />
+                  <Phone size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#94A3B8]" />
+                  <Input id="mobileNumber" type="tel" className="pl-9" placeholder="+91 9876543210" {...register("mobileNumber")} />
                 </div>
+                {fieldError(errors.mobileNumber?.message)}
               </div>
 
-              {/* Occupation Field */}
-              <div className="space-y-1">
-                <label className="text-xs font-bold uppercase text-slate-400 ml-1">
-                  Occupation
-                </label>
+              <div className="space-y-1.5">
+                <Label htmlFor="occupation">Occupation</Label>
                 <div className="relative">
-                  <Briefcase
-                    className="absolute left-3 top-1/2 -translate-y-1/2 text-primary"
-                    size={18}
-                  />
+                  <Briefcase size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#94A3B8] pointer-events-none z-10" />
                   <select
-                    name="occupation"
-                    required
-                    className="w-full pl-10 pr-4 py-3 bg-slate-50  border-none rounded-xl focus:ring-2 focus:ring-primary/50 transition-all appearance-none text-slate-400"
-                    onChange={handleChange}
+                    id="occupation"
+                    {...register("occupation")}
+                    className="flex h-9 w-full rounded-[0.625rem] border border-[#E2E8F0] bg-white pl-9 pr-3 py-2 text-sm text-[#0F172A] outline-none focus:border-[#6366F1] focus:ring-2 focus:ring-[#6366F1]/15 appearance-none transition-colors duration-150"
                   >
-                    <option value="">Select Occupation</option>
+                    <option value="">Select occupation</option>
                     <option value="architect">Architect</option>
                     <option value="designer">Interior Designer</option>
                     <option value="contractor">Contractor</option>
                     <option value="homeowner">Homeowner</option>
                   </select>
                 </div>
+                {fieldError(errors.occupation?.message)}
               </div>
             </>
           )}
 
-          {/* Email Field (Always visible) */}
-          <div className="space-y-1">
-            <label className="text-xs font-bold uppercase text-slate-400 ml-1">
-              Email Address
-            </label>
+          <div className="space-y-1.5">
+            <Label htmlFor="email">Email Address</Label>
             <div className="relative">
-              <Mail
-                className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500"
-                size={18}
-              />
-              <input
-                name="email"
-                type="email"
-                placeholder="email@example.com"
-                required
-                className="w-full pl-10 pr-4 py-3 bg-slate-50 border-none rounded-xl focus:ring-2 focus:ring-primary/50 transition-all text-slate-600"
-                onChange={handleChange}
-              />
+              <Mail size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#94A3B8]" />
+              <Input id="email" type="email" className="pl-9" placeholder="email@example.com" {...register("email")} />
             </div>
+            {fieldError(errors.email?.message)}
           </div>
 
-          {/* Password Field (Always visible) */}
-          <div className="space-y-1">
-            <div className="flex justify-between items-center">
-              <label className="text-xs font-bold uppercase text-slate-400 ml-1">
-                Password
-              </label>
-
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between">
+              <Label htmlFor="password">Password</Label>
               {isLogin && (
                 <button
                   type="button"
                   onClick={() => setShowForgot(true)}
-                  className="text-[10px] text-primary hover:underline font-bold uppercase"
+                  className="text-[11px] font-semibold text-[#6366F1] hover:text-[#4F46E5] transition-colors"
                 >
-                  Forgot?
+                  Forgot password?
                 </button>
               )}
             </div>
-
             <div className="relative">
-              {/* Lock Icon */}
-              <Lock
-                className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500"
-                size={18}
-              />
-
-              {/* Input */}
-              <input
-                name="password"
+              <Lock size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#94A3B8]" />
+              <Input
+                id="password"
                 type={showPassword ? "text" : "password"}
+                className="pl-9 pr-10"
                 placeholder="••••••••"
-                required
-                onChange={handleChange}
-                className="w-full pl-10 pr-10 py-3 bg-slate-50 border-none rounded-xl focus:ring-2 focus:ring-primary/50 transition-all text-slate-500"
+                {...register("password")}
               />
-
-              {/* Toggle Button */}
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-[#94A3B8] hover:text-[#475569] transition-colors"
               >
-                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
               </button>
             </div>
+            {fieldError(errors.password?.message)}
           </div>
 
-          {/* Submit Button */}
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full bg-primary ..."
-          >
-            {loading ? "Please wait..." : isLogin ? "Sign In" : "Register Now"}
-          </button>
+          <Button type="submit" className="w-full mt-2" size="lg" disabled={isSubmitting}>
+            {isSubmitting
+              ? <ButtonLoader text={isLogin ? "Signing in…" : "Creating account…"} />
+              : isLogin ? "Sign In" : "Create Account"}
+          </Button>
         </form>
 
-        {/* Footer / Toggle Section */}
-        <div className="p-6 bg-slate-50 border-t border-slate-100 text-center">
-          <p className="text-sm text-slate-500">
-            {isLogin ? "New to the Emporium?" : "Already a member?"}
+        <div className="px-8 py-5 bg-[#F8FAFC] border-t border-[#F1F5F9] text-center">
+          <p className="text-sm text-[#64748B]">
+            {isLogin ? "Don't have an account?" : "Already have an account?"}
             <button
-              onClick={() => setIsLogin(!isLogin)}
-              className="ml-2 text-primary font-bold hover:underline"
+              onClick={() => { setIsLogin(!isLogin); reset(); }}
+              className="ml-1.5 font-semibold text-[#6366F1] hover:text-[#4F46E5] transition-colors"
             >
-              {isLogin ? "Create an account" : "Log in here"}
+              {isLogin ? "Create account" : "Sign in"}
             </button>
           </p>
         </div>
       </main>
 
+      {/* OTP Modal */}
       {showOtpModal && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-          <div className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-xl">
-            <h2 className="text-xl font-bold mb-2 text-center text-black">
-              Verify OTP
-            </h2>
-            <p className="text-sm text-gray-500 text-center mb-4">
-              Enter the OTP sent to your email
-            </p>
-
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-xl animate-[fadeInScale_0.25s_ease_both]">
+            <h2 className="text-lg font-bold text-[#0F172A] text-center mb-1">Verify your email</h2>
+            <p className="text-sm text-[#64748B] text-center mb-5">Enter the OTP sent to your email address</p>
             <input
               type="text"
               value={otp}
               onChange={(e) => setOtp(e.target.value)}
               placeholder="Enter OTP"
-              className="w-full border rounded-lg p-3 text-center text-lg tracking-widest text-slate-500"
+              maxLength={6}
+              className="w-full border border-[#E2E8F0] rounded-xl px-4 py-3 text-center text-2xl tracking-[0.5em] font-mono text-[#0F172A] outline-none focus:border-[#6366F1] focus:ring-2 focus:ring-[#6366F1]/15 transition-colors"
             />
-
-            <button
-              onClick={handleVerifyOtp}
-              disabled={loading}
-              className="w-full mt-4 bg-primary text-white py-3 rounded-lg"
-            >
-              {loading ? "Verifying..." : "Verify OTP"}
-            </button>
-
+            <Button className="w-full mt-4" onClick={handleVerifyOtp} disabled={otpLoading}>
+              {otpLoading ? <ButtonLoader text="Verifying…" /> : "Verify OTP"}
+            </Button>
             <button
               onClick={() => setShowOtpModal(false)}
-              className="w-full mt-2 text-sm text-gray-500"
+              className="w-full mt-2 text-sm text-[#94A3B8] hover:text-[#475569] transition-colors py-2"
             >
               Cancel
             </button>
@@ -402,81 +318,64 @@ export default function LoginPage() {
         </div>
       )}
 
+      {/* Forgot Password Modal */}
       {showForgot && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="w-full max-w-md bg-white rounded-xl p-6 space-y-4 shadow-xl">
-            <h2 className="text-xl font-bold text-center">
-              {step === "email" ? "Forgot Password" : "Reset Password"}
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+          <div className="w-full max-w-md bg-white rounded-2xl p-6 shadow-xl animate-[fadeInScale_0.25s_ease_both]">
+            <h2 className="text-lg font-bold text-[#0F172A] text-center mb-1">
+              {forgotStep === "email" ? "Forgot password" : "Reset password"}
             </h2>
+            <p className="text-sm text-[#64748B] text-center mb-5">
+              {forgotStep === "email"
+                ? "Enter your email and we'll send you an OTP"
+                : "Enter your new password"}
+            </p>
 
-            {/* STEP 1: EMAIL */}
-            {step === "email" && (
-              <>
-                <input
-                  type="email"
-                  placeholder="Enter your email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="w-full border border-gray-300 rounded-lg px-4 py-2"
-                />
-
-                <button
-                  onClick={handleSendOtp}
-                  disabled={loading}
-                  className="w-full bg-primary py-2 rounded-lg font-bold"
-                >
-                  {loading ? "Sending..." : "Send OTP"}
-                </button>
-              </>
+            {forgotStep === "email" && (
+              <form onSubmit={handleForgotSubmit(onForgotEmail)} className="space-y-4">
+                <div className="space-y-1.5">
+                  <Label htmlFor="forgotEmail">Email Address</Label>
+                  <Input id="forgotEmail" type="email" placeholder="email@example.com" {...forgotReg("email")} />
+                  {fieldError(forgotErrors.email?.message)}
+                </div>
+                <Button type="submit" className="w-full" disabled={forgotSubmitting}>
+                  {forgotSubmitting ? <ButtonLoader text="Sending…" /> : "Send OTP"}
+                </Button>
+              </form>
             )}
 
-            {/* STEP 2: RESET PASSWORD */}
-            {step === "reset" && (
-              <>
-                <input
-                  type="password"
-                  placeholder="New Password"
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  className="w-full border border-gray-300 rounded-lg px-4 py-2"
-                />
-
-                <input
-                  type="password"
-                  placeholder="Confirm Password"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  className="w-full border border-gray-300 rounded-lg px-4 py-2"
-                />
-
-                <button
-                  onClick={handleUpdatePassword}
-                  disabled={loading}
-                  className="w-full bg-green-500 text-white py-2 rounded-lg font-bold"
-                >
-                  {loading ? "Updating..." : "Update Password"}
-                </button>
-              </>
+            {forgotStep === "reset" && (
+              <form onSubmit={handleResetSubmit(onResetPassword)} className="space-y-4">
+                <div className="space-y-1.5">
+                  <Label htmlFor="newPassword">New Password</Label>
+                  <Input id="newPassword" type="password" placeholder="••••••••" {...resetReg("newPassword")} />
+                  {fieldError(resetErrors.newPassword?.message)}
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="confirmPassword">Confirm Password</Label>
+                  <Input id="confirmPassword" type="password" placeholder="••••••••" {...resetReg("confirmPassword")} />
+                  {fieldError(resetErrors.confirmPassword?.message)}
+                </div>
+                <Button type="submit" className="w-full" disabled={resetSubmitting}>
+                  {resetSubmitting ? <ButtonLoader text="Updating…" /> : "Update Password"}
+                </Button>
+              </form>
             )}
 
-            {/* CLOSE BUTTON */}
             <button
-              onClick={() => {
-                setShowForgot(false);
-                setStep("email");
-              }}
-              className="w-full text-sm text-gray-500 mt-2"
+              onClick={() => { setShowForgot(false); setForgotStep("email"); resetForgot(); }}
+              className="w-full mt-3 text-sm text-[#94A3B8] hover:text-[#475569] transition-colors py-1"
             >
-              Close
+              Cancel
             </button>
           </div>
         </div>
       )}
 
-      {/* Trust Badge */}
-      <div className="mt-8 flex items-center gap-2 text-slate-400 text-sm">
-        <ShieldCheck size={16} />
-        <p>Your data is secured with AES-256 encryption</p>
+      {/* Trust badge */}
+      <div className="mt-8 flex items-center gap-2 text-[#94A3B8] text-xs">
+        <ShieldCheck size={14} />
+        <span>Secured with AES-256 encryption</span>
       </div>
     </div>
   );

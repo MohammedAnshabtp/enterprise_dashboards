@@ -3,6 +3,7 @@
 
 import { Trash2 } from "lucide-react";
 import { useWishlistStore } from "../store/wishlistStore";
+import { formatINR } from "../lib/utils";
 
 export default function WishlistCard({ item }) {
   const { removeFromWishlist } = useWishlistStore();
@@ -44,7 +45,7 @@ export default function WishlistCard({ item }) {
 
         {product?.price && (
           <p className="text-sm font-semibold text-indigo-600">
-            ₹{product.price}
+            {formatINR(product.price)}
           </p>
         )}
       </div>

@@ -1,4 +1,6 @@
 "use client";
+import { formatINR } from "../../lib/utils";
+
 export default function ProductTable({ products }) {
   return (
     <table className="w-full text-sm border">
@@ -14,7 +16,7 @@ export default function ProductTable({ products }) {
           <tr key={p.id} className="border-t">
             <td className="p-2">{p.sku}</td>
             <td className="p-2">{p.name}</td>
-            <td className="p-2 text-right">₹{p.price}</td>
+            <td className="p-2 text-right">{formatINR(p.price)}</td>
           </tr>
         ))}
       </tbody>
