@@ -20,6 +20,11 @@ export const ENDPOINTS = {
   UPLOAD_AVATAR: "/api/v1/auth/user/avatar",
   DELETE_AVATAR: "/api/v1/auth/user/avatar",
 
+  // ADMIN — USERS
+  GET_ALL_USERS: "/api/v1/auth/users",
+  DELETE_USER: (id) => `/api/v1/auth/user/${id}`,
+  UPDATE_USER_STATUS: "/api/v1/auth/user/update-status",
+
   // ADDRESS
   ADDRESS: "/api/v1/address/",
 
