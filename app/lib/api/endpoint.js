@@ -101,6 +101,7 @@ export const ENDPOINTS = {
   GET_PRODUCTS: "/api/v1/product",
   CREATE_PRODUCT: "/api/v1/product/",
   UPDATE_PRODUCT: (id) => `/api/v1/product/${id}`,
+  DELETE_PRODUCT: (id) => `/api/v1/product/${id}`,
 
   // FEATURED
   GET_FEATURED_PRODUCTS: "/api/v1/product/featured-products",

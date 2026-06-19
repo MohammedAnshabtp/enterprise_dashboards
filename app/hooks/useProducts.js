@@ -12,7 +12,12 @@ export const PRODUCTS_KEY = ["products"];
 export function useProducts(params) {
   return useQuery({
     queryKey: [...PRODUCTS_KEY, params],
-    queryFn: () => getProductsService(params).then((r) => r.data?.data || []),
+    queryFn: () =>
+      getProductsService(params).then((r) => ({
+        data: r.data?.data ?? [],
+        pagination: r.data?.pagination ?? {},
+      })),
+    placeholderData: (prev) => prev,
     staleTime: 1000 * 30,
   });
 }

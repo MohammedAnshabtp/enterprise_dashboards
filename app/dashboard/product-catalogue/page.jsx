@@ -1,340 +1,497 @@
-﻿/* eslint-disable jsx-a11y/alt-text */
 /* eslint-disable @next/next/no-img-element */
 "use client";
 
-import { useEffect, useState } from "react";
-import { useProductStore } from "../../store/productStore";
-import { useWishlistStore } from "../../store/wishlistStore"; // ✅ NEW
-import { CircleChevronLeft } from "lucide-react";
-import { useRouter } from "next/navigation";
-import WishlistButton from "../../components/Wishlist-Button";
+import { useState, useEffect, useRef } from "react";
+import { useForm } from "react-hook-form";
+import { yupResolver } from "@hookform/resolvers/yup";
+import * as yup from "yup";
+import toast from "react-hot-toast";
+import {
+  Search, Plus, SlidersHorizontal, ChevronLeft, ChevronRight,
+  ChevronUp, ChevronDown, Star, Package, Trash2, Pencil,
+  X, ImagePlus,
+} from "lucide-react";
+import {
+  useProducts, useCreateProduct, useUpdateProduct, useDeleteProduct,
+} from "../../hooks/useProducts";
+import { Button } from "../../components/ui/button";
+import { Input } from "../../components/ui/input";
+import { Label } from "../../components/ui/label";
+import { Badge } from "../../components/ui/badge";
+import {
+  Select, SelectTrigger, SelectContent, SelectItem,
+} from "../../components/ui/select";
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle,
+} from "../../components/ui/dialog";
+import ButtonLoader from "../../components/ui/ButtonLoader";
+import EmptyState from "../../components/ui/EmptyState";
 import { formatINR } from "../../lib/utils";
-import AddReviewModal from "../reviews/AddReviewModal";
 
-export default function ProductCatalogPage() {
-  const { products, fetchProducts, createProduct, updateProduct } =
-    useProductStore();
+const LIMIT = 12;
 
-  const { fetchWishlist } = useWishlistStore(); // ✅ NEW
+const productSchema = yup.object({
+  name: yup.string().required("Product name is required"),
+  price: yup
+    .number()
+    .typeError("Price must be a number")
+    .positive("Price must be greater than 0")
+    .required("Price is required"),
+  description: yup.string().nullable(),
+  shortDescription: yup.string().nullable(),
+  brand: yup.string().nullable(),
+  finish: yup.string().nullable(),
+});
 
-  const router = useRouter();
+const SORT_OPTIONS = [
+  { label: "Newest",  value: "createdAt", order: "desc" },
+  { label: "Oldest",  value: "createdAt", order: "asc"  },
+  { label: "Price ↑", value: "price",     order: "asc"  },
+  { label: "Price ↓", value: "price",     order: "desc" },
+  { label: "Name A–Z",value: "name",      order: "asc"  },
+  { label: "Name Z–A",value: "name",      order: "desc" },
+  { label: "Featured",value: "isFeatured",order: "desc" },
+];
 
-  const [open, setOpen] = useState(false);
-  const [editId, setEditId] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [reviewOpen, setReviewOpen] = useState(false);
-  const [selectedProduct, setSelectedProduct] = useState(null);
+export default function ProductsPage() {
+  const [page, setPage]               = useState(1);
+  const [search, setSearch]           = useState("");
+  const [debouncedSearch, setDebounced] = useState("");
+  const [status, setStatus]           = useState("");
+  const [isFeatured, setIsFeatured]   = useState("");
+  const [sortKey, setSortKey]         = useState(0);
 
-  const [query, setQuery] = useState({
-    page: 1,
-    limit: 8,
-    search: "",
-  });
+  const [modalOpen, setModalOpen]     = useState(false);
+  const [editProduct, setEditProduct] = useState(null);
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [thumbPreview, setThumbPreview] = useState(null);
+  const thumbRef = useRef(null);
 
-  const [form, setForm] = useState({
-    name: "",
-    description: "",
-    body: "",
-    image: null,
-  });
-
-  const [preview, setPreview] = useState(null);
-
-  // 🔥 FETCH PRODUCTS + WISHLIST
+  const debounceRef = useRef(null);
   useEffect(() => {
-    fetchProducts(query);
-    fetchWishlist(); // ✅ IMPORTANT
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [query]);
+    clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => { setDebounced(search); setPage(1); }, 400);
+    return () => clearTimeout(debounceRef.current);
+  }, [search]);
 
-  const handleChange = (e) => {
-    const { name, value, files } = e.target;
-
-    if (name === "image") {
-      const file = files[0];
-      setForm({ ...form, image: file });
-
-      if (file) {
-        setPreview(URL.createObjectURL(file));
-      }
-    } else {
-      setForm({ ...form, [name]: value });
-    }
+  const sort = SORT_OPTIONS[sortKey];
+  const params = {
+    page, limit: LIMIT,
+    ...(debouncedSearch && { search: debouncedSearch }),
+    ...(status          && { status }),
+    ...(isFeatured      && { isFeatured }),
+    sortBy: sort.value, sortOrder: sort.order,
   };
 
-  const handleSubmit = async () => {
-    setLoading(true);
+  const { data: result, isLoading, isFetching } = useProducts(params);
+  const products   = result?.data       ?? [];
+  const pagination = result?.pagination ?? {};
 
-    if (!form.name || !form.description) {
-      alert("Name & Description required");
-      setLoading(false);
+  const createProduct = useCreateProduct();
+  const updateProduct = useUpdateProduct();
+  const deleteProduct = useDeleteProduct();
+
+  const form = useForm({
+    resolver: yupResolver(productSchema),
+    defaultValues: { name: "", price: "", description: "", shortDescription: "", brand: "", finish: "" },
+  });
+  const { errors, isSubmitting } = form.formState;
+
+  const openAdd = () => {
+    setEditProduct(null);
+    setThumbPreview(null);
+    if (thumbRef.current) thumbRef.current.value = "";
+    form.reset({ name: "", price: "", description: "", shortDescription: "", brand: "", finish: "" });
+    setModalOpen(true);
+  };
+
+  const openEdit = (p) => {
+    setEditProduct(p);
+    setThumbPreview(p.thumbnail?.url ?? null);
+    form.reset({
+      name: p.name ?? "",
+      price: p.price ?? "",
+      description: p.description ?? "",
+      shortDescription: p.shortDescription ?? "",
+      brand: p.brand ?? "",
+      finish: p.finish ?? "",
+    });
+    setModalOpen(true);
+  };
+
+  const onSubmit = async (data) => {
+    const file = thumbRef.current?.files?.[0];
+    if (!editProduct && !file) {
+      toast.error("Thumbnail image is required");
       return;
     }
-
-    if (editId) {
-      await updateProduct(editId, form);
+    const payload = { ...data, ...(file && { thumbnail: file }) };
+    if (editProduct) {
+      await updateProduct.mutateAsync({ id: editProduct._id, data: payload });
     } else {
-      await createProduct(form);
+      await createProduct.mutateAsync(payload);
     }
-
-    setLoading(false);
-    setOpen(false);
-    setEditId(null);
-    setPreview(null);
-
-    setForm({
-      name: "",
-      description: "",
-      body: "",
-      image: null,
-    });
-
-    fetchProducts(query);
+    setModalOpen(false);
   };
 
-  const handleEdit = (p) => {
-    setEditId(p._id); // 🔥 FIXED (_id instead of id)
-    setForm({
-      name: p.name,
-      description: p.description,
-      body: p.body || "",
-      image: null,
-    });
-    setPreview(p.image);
-    setOpen(true);
+  const confirmDelete = () => {
+    deleteProduct.mutate(deleteTarget._id);
+    setDeleteTarget(null);
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6 space-y-6">
-      {/* HEADER */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 px-6 py-4">
-        {/* LEFT: Back + Title */}
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => router.back()}
-            className="p-2 rounded-full hover:bg-gray-100 transition text-black"
-          >
-            <CircleChevronLeft size={26} />
-          </button>
-
-          <h1 className="text-2xl font-semibold text-gray-800">
-            Product Catalog
-          </h1>
+    <div className="p-6 space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-[#0F172A]">Products</h1>
+          <p className="text-sm text-[#94A3B8]">
+            {pagination.totalItems != null ? `${pagination.totalItems} products total` : "Manage your product catalog"}
+          </p>
         </div>
-
-        {/* CENTER: Description */}
-        <p className="text-sm text-gray-500 md:text-center">
-          Manage your products and inventory
-        </p>
-
-        {/* RIGHT: Action */}
-        <div className="flex justify-start md:justify-end">
-          <button
-            onClick={() => setOpen(true)}
-            className="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-lg"
-          >
-            + Add Product
-          </button>
-        </div>
+        <Button onClick={openAdd}>
+          <Plus size={15} className="mr-1.5" /> Add Product
+        </Button>
       </div>
 
-      {/* SEARCH */}
-      <div className="bg-white text-black p-4 rounded-xl shadow-sm">
-        <input
-          type="text"
-          placeholder="Search products..."
-          value={query.search}
-          onChange={(e) =>
-            setQuery({ ...query, search: e.target.value, page: 1 })
-          }
-          className="w-full border p-3 rounded-lg"
-        />
-      </div>
+      {/* Filters */}
+      <div className="bg-white rounded-2xl border border-[#E2E8F0] shadow-sm p-4">
+        <div className="flex flex-wrap gap-3 items-center">
+          {/* Search */}
+          <div className="relative flex-1 min-w-[200px]">
+            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#94A3B8]" />
+            <Input
+              placeholder="Search by name or description…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-9"
+            />
+          </div>
 
-      {/* GRID */}
-      {products.length === 0 ? (
-        <p className="text-center text-gray-500">No products found</p>
-      ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-          {products.map((p) => (
-            <div
-              key={p._id}
-              className="bg-white rounded-xl border shadow-sm hover:shadow-md transition overflow-hidden relative"
+          {/* Status */}
+          <Select value={status || "all"} onValueChange={(v) => { setStatus(v === "all" ? "" : v); setPage(1); }}>
+            <SelectTrigger className="w-36">
+              <span className="text-sm">{status ? (status === "active" ? "Active" : "Inactive") : "All Status"}</span>
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Status</SelectItem>
+              <SelectItem value="active">Active</SelectItem>
+              <SelectItem value="inactive">Inactive</SelectItem>
+            </SelectContent>
+          </Select>
+
+          {/* Featured */}
+          <Select value={isFeatured || "all"} onValueChange={(v) => { setIsFeatured(v === "all" ? "" : v); setPage(1); }}>
+            <SelectTrigger className="w-36">
+              <span className="text-sm">{isFeatured === "true" ? "Featured" : isFeatured === "false" ? "Not Featured" : "All Products"}</span>
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Products</SelectItem>
+              <SelectItem value="true">Featured Only</SelectItem>
+              <SelectItem value="false">Not Featured</SelectItem>
+            </SelectContent>
+          </Select>
+
+          {/* Sort */}
+          <Select value={String(sortKey)} onValueChange={(v) => { setSortKey(Number(v)); setPage(1); }}>
+            <SelectTrigger className="w-36">
+              <SlidersHorizontal size={13} className="mr-1.5 text-[#94A3B8]" />
+              <span className="text-sm">{SORT_OPTIONS[sortKey].label}</span>
+            </SelectTrigger>
+            <SelectContent>
+              {SORT_OPTIONS.map((o, i) => (
+                <SelectItem key={i} value={String(i)}>{o.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          {/* Active filter chips */}
+          {(search || status || isFeatured) && (
+            <Button
+              variant="ghost" size="sm"
+              onClick={() => { setSearch(""); setStatus(""); setIsFeatured(""); setPage(1); }}
+              className="text-[#94A3B8] hover:text-[#0F172A] text-xs"
             >
-              {/* ❤️ Wishlist */}
-              <div className="absolute top-2 right-2 z-10 bg-white/80 backdrop-blur rounded-full">
-                <WishlistButton productId={p._id} />
-              </div>
-
-              {/* 🖼️ IMAGE */}
-              <div className="relative">
-                <img
-                  src={
-                    p?.thumbnail?.url ||
-                    p?.images?.[0]?.url ||
-                    "/placeholder.png"
-                  }
-                  className="h-44 w-full object-cover"
-                  alt={p.name}
-                />
-
-                {/* 🚫 OUT OF STOCK */}
-                {p.stock === 0 && (
-                  <span className="absolute top-2 left-2 bg-red-500 text-white text-xs px-2 py-1 rounded">
-                    Out of Stock
-                  </span>
-                )}
-              </div>
-
-              {/* 📦 CONTENT */}
-              <div className="p-4 space-y-2">
-                {/* NAME */}
-                <h3 className="font-semibold text-gray-800 line-clamp-1">
-                  {p.name}
-                </h3>
-
-                {/* BRAND */}
-                <p className="text-xs text-gray-500">{p.brand}</p>
-
-                {/* SIZE + FINISH */}
-                <div className="flex justify-between text-xs text-gray-600">
-                  <span>
-                    {p.dimensions?.length}×{p.dimensions?.width} ft
-                  </span>
-                  <span>{p.finish}</span>
-                </div>
-
-                {/* PRICE */}
-                <p className="text-lg font-bold text-green-600">
-                  {formatINR(p.price)}
-                  <span className="text-xs text-gray-500"> /sqft</span>
-                </p>
-
-                {/* EXTRA INFO */}
-                <div className="flex justify-between text-xs text-gray-500">
-                  <span>Tiles/Box: {p.tileInBox || "-"}</span>
-                  <span>Stock: {p.stock}</span>
-                </div>
-
-                {/* ACTIONS */}
-                <div className="flex gap-2 pt-2">
-                  <button className="flex-1 bg-primary text-white text-sm py-2 rounded hover:opacity-90">
-                    Add to Cart
-                  </button>
-                  <button
-                    onClick={() => {
-                      setSelectedProduct(p);
-                      setReviewOpen(true);
-                    }}
-                    className="flex-1 border border-indigo-600 text-indigo-600 text-sm py-2 rounded hover:bg-indigo-50"
-                  >
-                    Add Review
-                  </button>
-                  <button
-                    onClick={() => handleEdit(p)}
-                    className="text-indigo-600 text-sm font-medium hover:underline"
-                  >
-                    Edit
-                  </button>
-                </div>
-              </div>
-              <AddReviewModal
-                open={reviewOpen}
-                setOpen={setReviewOpen}
-                productId={selectedProduct?._id}
-              />
-            </div>
-          ))}
+              <X size={12} className="mr-1" /> Clear filters
+            </Button>
+          )}
         </div>
-      )}
-
-      {/* PAGINATION */}
-      <div className="flex justify-center gap-3">
-        <button
-          disabled={query.page === 1}
-          onClick={() => setQuery({ ...query, page: query.page - 1 })}
-          className="px-4 py-2 border rounded disabled:opacity-50 bg-indigo-600 text-white"
-        >
-          Prev
-        </button>
-
-        <span className="px-4 py-2 text-black">Page {query.page}</span>
-
-        <button
-          onClick={() => setQuery({ ...query, page: query.page + 1 })}
-          className="bg-indigo-600 text-white px-4 py-2 border rounded"
-        >
-          Next
-        </button>
       </div>
 
-      {/* MODAL */}
-      {open && (
-        <div
-          onClick={() => setOpen(false)}
-          className="fixed inset-0 bg-black/40 flex items-center justify-center z-50"
-        >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            className="bg-white rounded-2xl w-full max-w-lg p-6 space-y-4"
-          >
-            <h2 className="text-lg font-semibold text-black">
-              {editId ? "Edit Product" : "Add Product"}
-            </h2>
-
-            <input
-              name="name"
-              value={form.name}
-              onChange={handleChange}
-              placeholder="Product Name"
-              className="w-full border p-3 rounded text-black"
-            />
-
-            <textarea
-              name="description"
-              value={form.description}
-              onChange={handleChange}
-              placeholder="Description"
-              className="w-full border p-3 rounded text-black"
-            />
-
-            {editId && (
-              <textarea
-                name="body"
-                value={form.body}
-                onChange={handleChange}
-                placeholder="Body"
-                className="w-full border p-3 rounded text-black"
-              />
-            )}
-
-            <input
-              type="file"
-              name="image"
-              onChange={handleChange}
-              className="text-black"
-            />
-
-            {preview && (
-              <img src={preview} className="h-32 w-full object-cover rounded" />
-            )}
-
-            <div className="flex justify-end gap-3">
-              <button onClick={() => setOpen(false)} className="text-black">
-                Cancel
-              </button>
-
-              <button
-                onClick={handleSubmit}
-                disabled={loading}
-                className="bg-indigo-600 text-white px-4 py-2 rounded"
+      {/* Grid */}
+      <div className={`transition-opacity duration-150 ${isFetching && !isLoading ? "opacity-60" : ""}`}>
+        {isLoading ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
+            {Array.from({ length: LIMIT }).map((_, i) => (
+              <div key={i} className="bg-white rounded-2xl border border-[#E2E8F0] overflow-hidden animate-pulse">
+                <div className="h-44 bg-[#F1F5F9]" />
+                <div className="p-4 space-y-2">
+                  <div className="h-4 bg-[#F1F5F9] rounded w-3/4" />
+                  <div className="h-3 bg-[#F1F5F9] rounded w-1/2" />
+                  <div className="h-5 bg-[#F1F5F9] rounded w-1/3" />
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : products.length === 0 ? (
+          <EmptyState icon={Package} title="No products found" />
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
+            {products.map((p) => (
+              <div
+                key={p._id}
+                className="bg-white rounded-2xl border border-[#E2E8F0] shadow-sm hover:shadow-md hover:border-[#6366F1]/30 transition-all duration-200 overflow-hidden group flex flex-col"
               >
-                {loading ? "Saving..." : editId ? "Update" : "Create"}
-              </button>
-            </div>
+                {/* Image */}
+                <div className="relative overflow-hidden">
+                  <img
+                    src={p.thumbnail?.url || p.images?.[0]?.url || "/placeholder.png"}
+                    alt={p.name}
+                    className="h-44 w-full object-cover group-hover:scale-105 transition-transform duration-300"
+                  />
+                  {/* Badges */}
+                  <div className="absolute top-2 left-2 flex flex-col gap-1">
+                    {p.stock === 0 && (
+                      <span className="bg-red-500 text-white text-[10px] font-semibold px-2 py-0.5 rounded-full">
+                        Out of Stock
+                      </span>
+                    )}
+                    {p.isFeatured && (
+                      <span className="bg-amber-400 text-white text-[10px] font-semibold px-2 py-0.5 rounded-full flex items-center gap-0.5">
+                        <Star size={8} fill="white" /> Featured
+                      </span>
+                    )}
+                  </div>
+                  {p.status === "inactive" && (
+                    <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
+                      <span className="bg-black/60 text-white text-xs px-2 py-1 rounded-full">Inactive</span>
+                    </div>
+                  )}
+                  {/* Hover actions */}
+                  <div className="absolute top-2 right-2 flex gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                    <button
+                      onClick={() => openEdit(p)}
+                      className="w-7 h-7 bg-white rounded-full flex items-center justify-center shadow hover:bg-[#EEF2FF] transition-colors"
+                    >
+                      <Pencil size={12} className="text-[#6366F1]" />
+                    </button>
+                    <button
+                      onClick={() => setDeleteTarget(p)}
+                      className="w-7 h-7 bg-white rounded-full flex items-center justify-center shadow hover:bg-red-50 transition-colors"
+                    >
+                      <Trash2 size={12} className="text-red-500" />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Content */}
+                <div className="p-4 flex flex-col flex-1">
+                  <h3 className="font-semibold text-[#0F172A] text-sm line-clamp-1 mb-0.5">
+                    {p.name}
+                  </h3>
+
+                  {p.brand && (
+                    <p className="text-xs text-[#94A3B8] mb-2">{p.brand}</p>
+                  )}
+
+                  <div className="flex items-center justify-between text-xs text-[#64748B] mb-3">
+                    {p.dimensions?.length && p.dimensions?.width ? (
+                      <span>{p.dimensions.length}×{p.dimensions.width} ft</span>
+                    ) : <span />}
+                    {p.finish && (
+                      <Badge variant="outline" className="text-[10px] px-1.5 py-0 capitalize">
+                        {p.finish}
+                      </Badge>
+                    )}
+                  </div>
+
+                  <div className="mt-auto">
+                    <p className="text-lg font-bold text-[#6366F1]">
+                      {formatINR(p.price)}
+                      <span className="text-xs font-normal text-[#94A3B8]"> /sqft</span>
+                    </p>
+                    <div className="flex justify-between text-xs text-[#94A3B8] mt-1">
+                      {p.tileInBox ? <span>Tiles/Box: {p.tileInBox}</span> : <span />}
+                      <span className={p.stock === 0 ? "text-red-400" : "text-emerald-600"}>
+                        Stock: {p.stock}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Pagination */}
+      {pagination.totalPages > 1 && (
+        <div className="flex items-center justify-between bg-white rounded-2xl border border-[#E2E8F0] shadow-sm px-4 py-3">
+          <p className="text-sm text-[#94A3B8]">
+            {(() => {
+              const from = (pagination.currentPage - 1) * pagination.itemsPerPage + 1;
+              const to   = Math.min(pagination.currentPage * pagination.itemsPerPage, pagination.totalItems);
+              return `Showing ${from}–${to} of ${pagination.totalItems} products · Page ${pagination.currentPage} of ${pagination.totalPages}`;
+            })()}
+          </p>
+          <div className="flex items-center gap-1">
+            <Button
+              variant="ghost" size="sm"
+              onClick={() => setPage((p) => p - 1)}
+              disabled={!pagination.hasPrevPage || isFetching}
+            >
+              <ChevronLeft size={15} />
+            </Button>
+            {Array.from({ length: pagination.totalPages }, (_, i) => i + 1)
+              .filter((p) => p === 1 || p === pagination.totalPages || Math.abs(p - pagination.currentPage) <= 1)
+              .reduce((acc, p, i, arr) => {
+                if (i > 0 && p - arr[i - 1] > 1) acc.push("...");
+                acc.push(p);
+                return acc;
+              }, [])
+              .map((p, i) =>
+                p === "..." ? (
+                  <span key={`e${i}`} className="px-2 text-[#94A3B8] text-sm">…</span>
+                ) : (
+                  <Button
+                    key={p}
+                    variant={p === pagination.currentPage ? "default" : "ghost"}
+                    size="sm"
+                    onClick={() => setPage(p)}
+                    disabled={isFetching}
+                    className="w-8 h-8 p-0"
+                  >
+                    {p}
+                  </Button>
+                )
+              )}
+            <Button
+              variant="ghost" size="sm"
+              onClick={() => setPage((p) => p + 1)}
+              disabled={!pagination.hasNextPage || isFetching}
+            >
+              <ChevronRight size={15} />
+            </Button>
           </div>
         </div>
       )}
+
+      {/* Add / Edit Modal */}
+      <Dialog open={modalOpen} onOpenChange={setModalOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>{editProduct ? "Edit Product" : "Add New Product"}</DialogTitle>
+          </DialogHeader>
+
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 mt-2">
+            <div className="space-y-1.5">
+              <Label>Product Name <span className="text-red-500">*</span></Label>
+              <Input placeholder="e.g. MOBON DOLCE CALCATTA" {...form.register("name")} />
+              {errors.name && <p className="text-xs text-[#EF4444]">{errors.name.message}</p>}
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label>Price (₹/sqft) <span className="text-red-500">*</span></Label>
+                <Input type="number" placeholder="e.g. 75" {...form.register("price")} />
+                {errors.price && <p className="text-xs text-[#EF4444]">{errors.price.message}</p>}
+              </div>
+              <div className="space-y-1.5">
+                <Label>Brand</Label>
+                <Input placeholder="e.g. SOMANY" {...form.register("brand")} />
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label>Finish</Label>
+              <Input placeholder="e.g. GLOSSY, MAT" {...form.register("finish")} />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label>Short Description</Label>
+              <Input placeholder="One-line summary" {...form.register("shortDescription")} />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label>Description</Label>
+              <textarea
+                placeholder="Full product description…"
+                rows={3}
+                {...form.register("description")}
+                className="w-full rounded-lg border border-[#E2E8F0] bg-white px-3 py-2 text-sm text-[#0F172A] placeholder:text-[#94A3B8] focus:outline-none focus:ring-2 focus:ring-[#6366F1]/30 resize-none"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label>
+                Thumbnail Image {!editProduct && <span className="text-red-500">*</span>}
+              </Label>
+              {thumbPreview && (
+                <div className="relative w-full h-32 rounded-lg overflow-hidden border border-[#E2E8F0] mb-2">
+                  <img src={thumbPreview} alt="" className="w-full h-full object-cover" />
+                  <button
+                    type="button"
+                    onClick={() => { setThumbPreview(null); if (thumbRef.current) thumbRef.current.value = ""; }}
+                    className="absolute top-1.5 right-1.5 w-6 h-6 bg-black/50 rounded-full flex items-center justify-center hover:bg-black/70 transition-colors"
+                  >
+                    <X size={11} className="text-white" />
+                  </button>
+                </div>
+              )}
+              <label className="flex items-center justify-center gap-2 w-full border-2 border-dashed border-[#E2E8F0] rounded-lg p-4 cursor-pointer hover:border-[#6366F1]/50 hover:bg-[#EEF2FF]/30 transition-colors">
+                <ImagePlus size={16} className="text-[#94A3B8]" />
+                <span className="text-sm text-[#94A3B8]">
+                  {thumbPreview ? "Change image" : "Click to upload thumbnail"}
+                </span>
+                <input
+                  ref={thumbRef}
+                  type="file"
+                  accept="image/*"
+                  hidden
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) setThumbPreview(URL.createObjectURL(file));
+                  }}
+                />
+              </label>
+            </div>
+
+            <Button
+              type="submit"
+              disabled={isSubmitting || createProduct.isPending || updateProduct.isPending}
+              className="w-full disabled:cursor-not-allowed"
+            >
+              {isSubmitting || createProduct.isPending || updateProduct.isPending
+                ? <ButtonLoader text="Saving…" />
+                : editProduct ? "Update Product" : "Add Product"}
+            </Button>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation */}
+      <Dialog open={!!deleteTarget} onOpenChange={() => setDeleteTarget(null)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Delete Product</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-[#64748B] mt-1">
+            Are you sure you want to delete <span className="font-medium text-[#0F172A]">{deleteTarget?.name}</span>? This cannot be undone.
+          </p>
+          <div className="flex gap-3 mt-4">
+            <Button variant="ghost" className="flex-1" onClick={() => setDeleteTarget(null)}>
+              Cancel
+            </Button>
+            <Button
+              className="flex-1 bg-red-500 hover:bg-red-600 text-white disabled:cursor-not-allowed"
+              onClick={confirmDelete}
+              disabled={deleteProduct.isPending}
+            >
+              {deleteProduct.isPending ? <ButtonLoader text="Deleting…" /> : "Delete"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

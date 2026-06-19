@@ -29,7 +29,7 @@ import { cn } from "../../lib/cn";
 const menu = [
   { label: "Users",              path: "/dashboard/user-visit",        icon: Users },
   { label: "User Profile",      path: "/dashboard/user-profile",      icon: UserCircle },
-  { label: "Product Catalogue", path: "/dashboard/product-catalogue", icon: Package },
+  { label: "Products",          path: "/dashboard/product-catalogue", icon: Package },
   { label: "Space Category",    path: "/dashboard/space-category",    icon: LayoutGrid },
   { label: "Size Category",     path: "/dashboard/size-category",     icon: Ruler },
   { label: "Product Style",     path: "/dashboard/product-style",     icon: Palette },
