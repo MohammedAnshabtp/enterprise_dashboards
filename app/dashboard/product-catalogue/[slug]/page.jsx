@@ -187,7 +187,7 @@ export default function ProductDetailPage() {
 
             <Button
               size="sm"
-              onClick={() => router.push(`/dashboard/product-catalogue/add?edit=${product._id}`)}
+              onClick={() => router.push(`/dashboard/product-catalogue/edit/${product.slug}`)}
             >
               <Pencil size={13} className="mr-1.5" /> Edit
             </Button>

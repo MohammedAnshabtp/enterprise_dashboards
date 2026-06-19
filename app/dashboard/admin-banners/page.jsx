@@ -50,7 +50,7 @@ export default function AdminBannersPage() {
   const del    = useDeleteBanner();
 
   const {
-    register, handleSubmit, reset, watch, setValue,
+    register, handleSubmit, reset, watch, setValue, setError, clearErrors,
     formState: { errors, isSubmitting },
   } = useForm({
     resolver: yupResolver(schema),
@@ -86,6 +86,10 @@ export default function AdminBannersPage() {
   };
 
   const onSubmit = async (data) => {
+    if (!editItem && !fileRef.current?.files?.[0]) {
+      setError("image", { type: "required", message: "Banner image is required" });
+      return;
+    }
     const payload = {
       title:        data.title,
       imageAlt:     data.imageAlt || undefined,
@@ -393,10 +397,14 @@ export default function AdminBannersPage() {
                   hidden
                   onChange={(e) => {
                     const f = e.target.files?.[0];
-                    if (f) setPreview(URL.createObjectURL(f));
+                    if (f) {
+                      setPreview(URL.createObjectURL(f));
+                      clearErrors("image");
+                    }
                   }}
                 />
               </label>
+              {errors.image && <p className="text-xs text-[#EF4444]">{errors.image.message}</p>}
             </div>
 
             <Button

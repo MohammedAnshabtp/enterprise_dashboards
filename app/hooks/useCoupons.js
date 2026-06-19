@@ -53,7 +53,11 @@ export function useDeleteCoupon() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (id) => deleteCoupon(id),
-    onSuccess: () => {
+    onSuccess: (_, id) => {
+      queryClient.setQueriesData({ queryKey: COUPONS_KEY }, (old) => {
+        if (!old) return old;
+        return { ...old, data: old.data.filter((c) => c._id !== id) };
+      });
       queryClient.invalidateQueries({ queryKey: COUPONS_KEY });
       toast.success("Coupon deleted");
     },

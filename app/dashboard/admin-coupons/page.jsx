@@ -137,6 +137,113 @@ function UsageBar({ used, limit }) {
   );
 }
 
+// ─── DatePicker ───────────────────────────────────────────────────────────────
+
+function DatePicker({ value, onChange, placeholder = "Select date…" }) {
+  const [open, setOpen]     = useState(false);
+  const [cursor, setCursor] = useState(dayjs());
+  const ref                 = useRef(null);
+
+  useEffect(() => {
+    if (value) setCursor(dayjs(value).startOf("month"));
+  }, [value]);
+
+  useEffect(() => {
+    const handle = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    document.addEventListener("mousedown", handle);
+    return () => document.removeEventListener("mousedown", handle);
+  }, []);
+
+  const startOfMonth = cursor.startOf("month");
+  const daysInMonth  = cursor.daysInMonth();
+  const firstDay     = startOfMonth.day();
+  const today        = dayjs().startOf("day");
+  const selected     = value ? dayjs(value).startOf("day") : null;
+
+  const cells = [];
+  for (let i = 0; i < firstDay; i++) cells.push(null);
+  for (let d = 1; d <= daysInMonth; d++) cells.push(cursor.date(d));
+
+  const select = (d) => {
+    onChange(d.format("YYYY-MM-DD"));
+    setOpen(false);
+  };
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="flex h-9 w-full items-center gap-2 rounded-[0.625rem] border border-[#E2E8F0] bg-white px-3 text-sm text-left transition-colors hover:border-[#6366F1]/50 focus:outline-none focus:ring-2 focus:ring-[#6366F1]/15"
+      >
+        <Calendar size={14} className="text-[#94A3B8] shrink-0" />
+        <span className={selected ? "text-[#0F172A]" : "text-[#94A3B8]"}>
+          {selected ? selected.format("DD MMM YYYY") : placeholder}
+        </span>
+        {selected && (
+          <button
+            type="button"
+            className="ml-auto text-[#94A3B8] hover:text-[#475569]"
+            onClick={(e) => { e.stopPropagation(); onChange(""); }}
+          >
+            <X size={13} />
+          </button>
+        )}
+      </button>
+
+      {open && (
+        <div className="absolute z-50 mt-1 w-72 bg-white border border-[#E2E8F0] rounded-xl shadow-lg p-3">
+          {/* Month/Year nav */}
+          <div className="flex items-center justify-between mb-2">
+            <button type="button" onClick={() => setCursor((c) => c.subtract(1, "month"))}
+              className="w-7 h-7 rounded-lg flex items-center justify-center hover:bg-[#F1F5F9] transition-colors">
+              <ChevronLeft size={14} className="text-[#64748B]" />
+            </button>
+            <span className="text-sm font-semibold text-[#0F172A]">{cursor.format("MMMM YYYY")}</span>
+            <button type="button" onClick={() => setCursor((c) => c.add(1, "month"))}
+              className="w-7 h-7 rounded-lg flex items-center justify-center hover:bg-[#F1F5F9] transition-colors">
+              <ChevronRight size={14} className="text-[#64748B]" />
+            </button>
+          </div>
+
+          {/* Day headers */}
+          <div className="grid grid-cols-7 mb-1">
+            {["Su","Mo","Tu","We","Th","Fr","Sa"].map((d) => (
+              <div key={d} className="text-center text-[10px] font-semibold text-[#94A3B8] py-1">{d}</div>
+            ))}
+          </div>
+
+          {/* Day cells */}
+          <div className="grid grid-cols-7 gap-y-0.5">
+            {cells.map((d, i) => {
+              if (!d) return <div key={`e-${i}`} />;
+              const isSelected = selected && d.isSame(selected, "day");
+              const isToday    = d.isSame(today, "day");
+              const isPast     = d.isBefore(today, "day");
+              return (
+                <button
+                  key={d.toString()}
+                  type="button"
+                  onClick={() => select(d)}
+                  disabled={isPast}
+                  className={`h-8 w-full rounded-lg text-xs font-medium transition-colors
+                    ${isSelected ? "bg-[#6366F1] text-white" :
+                      isToday    ? "bg-[#EEF2FF] text-[#6366F1] font-semibold" :
+                      isPast     ? "text-[#CBD5E1] cursor-not-allowed" :
+                                   "text-[#0F172A] hover:bg-[#F1F5F9]"}
+                  `}
+                >
+                  {d.date()}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 const LIMIT = 15;
@@ -506,7 +613,7 @@ export default function AdminCouponsPage() {
                             : "bg-white border-[#E2E8F0] text-[#64748B] hover:border-[#6366F1]/30"
                         }`}
                       >
-                        <span className="font-bold">{opt.icon}</span> {opt.label}
+                        {opt.label}
                       </button>
                     ))}
                   </div>
@@ -546,7 +653,11 @@ export default function AdminCouponsPage() {
                 </div>
                 <div className="space-y-1.5">
                   <Label>Expires On <span className="text-[#94A3B8] font-normal text-xs">(optional)</span></Label>
-                  <Input type="date" {...register("expiresAt")} />
+                  <DatePicker
+                    value={formValues.expiresAt}
+                    onChange={(v) => setValue("expiresAt", v)}
+                    placeholder="Select expiry date…"
+                  />
                 </div>
               </div>
             </div>

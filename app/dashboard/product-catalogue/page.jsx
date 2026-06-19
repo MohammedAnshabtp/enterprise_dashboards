@@ -5,11 +5,15 @@ import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import {
   Search, Plus, SlidersHorizontal, ChevronLeft, ChevronRight,
-  Star, Trash2, Pencil, LayoutGrid, List, X, Package,
+  Star, Trash2, Pencil, LayoutGrid, List, X, Package, Tag,
+  CheckSquare2, Square, Loader2, CheckCircle2, AlertCircle, Check,
 } from "lucide-react";
 import {
-  useProducts, useDeleteProduct,
+  useProducts, useDeleteProduct, useBulkDeleteProducts, useBulkDeleteStatus,
+  useBulkCategoryUpdate, PRODUCTS_KEY,
 } from "../../hooks/useProducts";
+import { useQueryClient } from "@tanstack/react-query";
+import { useSizeCategories, useSpaceCategories, useTileUsageCategories } from "../../hooks/useCategories";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
 import { Badge } from "../../components/ui/badge";
@@ -26,27 +30,37 @@ import { formatINR } from "../../lib/utils";
 const LIMIT = 12;
 
 const SORT_OPTIONS = [
-  { label: "Newest",  value: "createdAt", order: "desc" },
-  { label: "Oldest",  value: "createdAt", order: "asc"  },
-  { label: "Price ↑", value: "price",     order: "asc"  },
-  { label: "Price ↓", value: "price",     order: "desc" },
-  { label: "Name A–Z",value: "name",      order: "asc"  },
-  { label: "Name Z–A",value: "name",      order: "desc" },
-  { label: "Featured",value: "isFeatured",order: "desc" },
+  { label: "Newest",   value: "createdAt", order: "desc" },
+  { label: "Oldest",   value: "createdAt", order: "asc"  },
+  { label: "Price ↑",  value: "price",     order: "asc"  },
+  { label: "Price ↓",  value: "price",     order: "desc" },
+  { label: "Name A–Z", value: "name",      order: "asc"  },
+  { label: "Name Z–A", value: "name",      order: "desc" },
+  { label: "Featured", value: "isFeatured",order: "desc" },
 ];
 
 export default function ProductsPage() {
   const router = useRouter();
 
-  const [page, setPage]               = useState(1);
-  const [search, setSearch]           = useState("");
+  const [page, setPage]                 = useState(1);
+  const [search, setSearch]             = useState("");
   const [debouncedSearch, setDebounced] = useState("");
-  const [status, setStatus]           = useState("");
-  const [isFeatured, setIsFeatured]   = useState("");
-  const [sortKey, setSortKey]         = useState(0);
-  const [viewMode, setViewMode]       = useState("grid");
+  const [status, setStatus]             = useState("");
+  const [isFeatured, setIsFeatured]     = useState("");
+  const [sortKey, setSortKey]           = useState(0);
+  const [viewMode, setViewMode]         = useState("grid");
 
+  // single delete
   const [deleteTarget, setDeleteTarget] = useState(null);
+
+  // bulk actions
+  const [isSelectMode, setSelectMode]        = useState(false);
+  const [selectedIds, setSelectedIds]        = useState(new Set());
+  const [bulkConfirmOpen, setBulkConfirm]    = useState(false);
+  const [bulkJobId, setBulkJobId]            = useState(null);
+  const [bulkProgressOpen, setBulkProgressOpen] = useState(false);
+  const [bulkCatOpen, setBulkCatOpen]        = useState(false);
+  const [bulkCatForm, setBulkCatForm]        = useState({ sizeCategory: "", spaceCategories: [], tileUsageCategories: [], mode: "add" });
 
   const debounceRef = useRef(null);
   useEffect(() => {
@@ -55,7 +69,7 @@ export default function ProductsPage() {
     return () => clearTimeout(debounceRef.current);
   }, [search]);
 
-  const sort = SORT_OPTIONS[sortKey];
+  const sort   = SORT_OPTIONS[sortKey];
   const params = {
     page, limit: LIMIT,
     ...(debouncedSearch && { search: debouncedSearch }),
@@ -68,16 +82,112 @@ export default function ProductsPage() {
   const products   = result?.data       ?? [];
   const pagination = result?.pagination ?? {};
 
-  const deleteProduct = useDeleteProduct();
+  const queryClient    = useQueryClient();
+  const deleteProduct  = useDeleteProduct();
+  const bulkDelete     = useBulkDeleteProducts();
+  const bulkCatUpdate  = useBulkCategoryUpdate();
+  const { data: bulkStatusData } = useBulkDeleteStatus(bulkJobId);
 
-  const openEdit = (p) => {
-    router.push(`/dashboard/product-catalogue/edit/${p.slug}`);
-  };
+  const { data: sizeResult }  = useSizeCategories({ limit: 100 });
+  const { data: spaceResult } = useSpaceCategories({ limit: 100 });
+  const { data: usageResult } = useTileUsageCategories({ limit: 100 });
+  const sizeCategories      = sizeResult?.data  ?? [];
+  const spaceCategories     = spaceResult?.data ?? [];
+  const tileUsageCategories = usageResult?.data ?? [];
+
+  const openEdit = (p) => router.push(`/dashboard/product-catalogue/edit/${p.slug}`);
 
   const confirmDelete = () => {
     deleteProduct.mutate(deleteTarget._id);
     setDeleteTarget(null);
   };
+
+  // Selection helpers
+  const toggleSelect = (id, e) => {
+    e.stopPropagation();
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (products.every((p) => selectedIds.has(p._id))) {
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        products.forEach((p) => next.delete(p._id));
+        return next;
+      });
+    } else {
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        products.forEach((p) => next.add(p._id));
+        return next;
+      });
+    }
+  };
+
+  const exitSelectMode = () => {
+    setSelectMode(false);
+    setSelectedIds(new Set());
+  };
+
+  const handleBulkDeleteConfirm = async () => {
+    setBulkConfirm(false);
+    try {
+      const res = await bulkDelete.mutateAsync([...selectedIds]);
+      if (res?.jobId) {
+        setBulkJobId(String(res.jobId));
+        setBulkProgressOpen(true);
+        exitSelectMode();
+      }
+    } catch {
+      // error toast handled in hook
+    }
+  };
+
+  const handleBulkCategoryApply = async () => {
+    const { sizeCategory, spaceCategories: sc, tileUsageCategories: tuc, mode } = bulkCatForm;
+    const payload = { productIds: [...selectedIds], mode };
+    if (sizeCategory) payload.sizeCategory = sizeCategory;
+    if (sc.length)    payload.spaceCategories = sc;
+    if (tuc.length)   payload.tileUsageCategories = tuc;
+    if (!sizeCategory && !sc.length && !tuc.length) return;
+    try {
+      await bulkCatUpdate.mutateAsync(payload);
+      setBulkCatOpen(false);
+      setBulkCatForm({ sizeCategory: "", spaceCategories: [], tileUsageCategories: [], mode: "add" });
+      exitSelectMode();
+    } catch { /* error toast handled in hook */ }
+  };
+
+  const toggleCatMulti = (field, id) => {
+    setBulkCatForm((prev) => {
+      const arr = prev[field];
+      return { ...prev, [field]: arr.includes(id) ? arr.filter((v) => v !== id) : [...arr, id] };
+    });
+  };
+
+  const allPageSelected = products.length > 0 && products.every((p) => selectedIds.has(p._id));
+  const somePageSelected = products.some((p) => selectedIds.has(p._id));
+
+  // Invalidate products list and auto-close progress when job is done
+  useEffect(() => {
+    if (!bulkStatusData) return;
+    if (bulkStatusData.status === "completed" || bulkStatusData.status === "failed") {
+      queryClient.invalidateQueries({ queryKey: PRODUCTS_KEY });
+      const t = setTimeout(() => {
+        setBulkProgressOpen(false);
+        setBulkJobId(null);
+      }, 3000);
+      return () => clearTimeout(t);
+    }
+  }, [bulkStatusData?.status, queryClient]);
+
+  const jobDone   = bulkStatusData?.status === "completed" || bulkStatusData?.status === "failed";
+  const jobFailed = bulkStatusData?.status === "failed";
 
   return (
     <div className="p-6 space-y-6">
@@ -104,6 +214,15 @@ export default function ProductsPage() {
               <List size={14} />
             </button>
           </div>
+          <Button
+            variant={isSelectMode ? "default" : "ghost"}
+            size="sm"
+            onClick={() => isSelectMode ? exitSelectMode() : setSelectMode(true)}
+            className={isSelectMode ? "bg-[#6366F1] text-white" : "border border-[#E2E8F0]"}
+          >
+            <CheckSquare2 size={14} className="mr-1.5" />
+            {isSelectMode ? "Cancel Select" : "Select"}
+          </Button>
           <Button onClick={() => router.push("/dashboard/product-catalogue/add")}>
             <Plus size={15} className="mr-1.5" /> Add Product
           </Button>
@@ -113,7 +232,6 @@ export default function ProductsPage() {
       {/* Filters */}
       <div className="bg-white rounded-2xl border border-[#E2E8F0] shadow-sm p-4">
         <div className="flex flex-wrap gap-3 items-center">
-          {/* Search */}
           <div className="relative flex-1 min-w-[200px]">
             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#94A3B8]" />
             <Input
@@ -123,8 +241,6 @@ export default function ProductsPage() {
               className="pl-9"
             />
           </div>
-
-          {/* Status */}
           <Select value={status || "all"} onValueChange={(v) => { setStatus(v === "all" ? "" : v); setPage(1); }}>
             <SelectTrigger className="w-36">
               <span className="text-sm">{status ? (status === "active" ? "Active" : "Inactive") : "All Status"}</span>
@@ -135,8 +251,6 @@ export default function ProductsPage() {
               <SelectItem value="inactive">Inactive</SelectItem>
             </SelectContent>
           </Select>
-
-          {/* Featured */}
           <Select value={isFeatured || "all"} onValueChange={(v) => { setIsFeatured(v === "all" ? "" : v); setPage(1); }}>
             <SelectTrigger className="w-36">
               <span className="text-sm">{isFeatured === "true" ? "Featured" : isFeatured === "false" ? "Not Featured" : "All Products"}</span>
@@ -147,8 +261,6 @@ export default function ProductsPage() {
               <SelectItem value="false">Not Featured</SelectItem>
             </SelectContent>
           </Select>
-
-          {/* Sort */}
           <Select value={String(sortKey)} onValueChange={(v) => { setSortKey(Number(v)); setPage(1); }}>
             <SelectTrigger className="w-36">
               <SlidersHorizontal size={13} className="mr-1.5 text-[#94A3B8]" />
@@ -160,8 +272,6 @@ export default function ProductsPage() {
               ))}
             </SelectContent>
           </Select>
-
-          {/* Active filter chips */}
           {(search || status || isFeatured) && (
             <Button
               variant="ghost" size="sm"
@@ -208,144 +318,167 @@ export default function ProductsPage() {
           <EmptyState icon={Package} title="No products found" />
         ) : viewMode === "grid" ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
-            {products.map((p) => (
-              <div
-                key={p._id}
-                onClick={() => router.push(`/dashboard/product-catalogue/${p.slug}`)}
-                className="bg-white rounded-2xl border border-[#E2E8F0] shadow-sm hover:shadow-md hover:border-[#6366F1]/30 transition-all duration-200 overflow-hidden group flex flex-col cursor-pointer"
-              >
-                {/* Image */}
-                <div className="relative overflow-hidden">
-                  <img
-                    src={p.thumbnail?.url || p.images?.[0]?.url || "/placeholder.png"}
-                    alt={p.name}
-                    className="h-44 w-full object-cover group-hover:scale-105 transition-transform duration-300"
-                  />
-                  <div className="absolute top-2 left-2 flex flex-col gap-1">
-                    {p.stock === 0 && (
-                      <span className="bg-red-500 text-white text-[10px] font-semibold px-2 py-0.5 rounded-full">
-                        Out of Stock
-                      </span>
+            {products.map((p) => {
+              const isSelected = selectedIds.has(p._id);
+              return (
+                <div
+                  key={p._id}
+                  onClick={(e) => isSelectMode ? toggleSelect(p._id, e) : router.push(`/dashboard/product-catalogue/${p.slug}`)}
+                  className={`bg-white rounded-2xl border shadow-sm hover:shadow-md transition-all duration-200 overflow-hidden group flex flex-col cursor-pointer
+                    ${isSelected ? "border-[#6366F1] ring-2 ring-[#6366F1]/20" : "border-[#E2E8F0] hover:border-[#6366F1]/30"}`}
+                >
+                  <div className="relative overflow-hidden">
+                    <img
+                      src={p.thumbnail?.url || p.images?.[0]?.url || "/placeholder.png"}
+                      alt={p.name}
+                      className="h-44 w-full object-cover group-hover:scale-105 transition-transform duration-300"
+                    />
+                    {/* Select checkbox */}
+                    {isSelectMode && (
+                      <div
+                        onClick={(e) => toggleSelect(p._id, e)}
+                        className="absolute top-2 left-2 z-10 cursor-pointer"
+                      >
+                        {isSelected
+                          ? <CheckSquare2 size={22} className="text-[#6366F1] drop-shadow" />
+                          : <Square size={22} className="text-white drop-shadow" />}
+                      </div>
                     )}
-                    {p.isFeatured && (
-                      <span className="bg-amber-400 text-white text-[10px] font-semibold px-2 py-0.5 rounded-full flex items-center gap-0.5">
-                        <Star size={8} fill="white" /> Featured
-                      </span>
+                    <div className="absolute top-2 left-2 flex flex-col gap-1" style={{ left: isSelectMode ? "2.25rem" : undefined }}>
+                      {p.stock === 0 && (
+                        <span className="bg-red-500 text-white text-[10px] font-semibold px-2 py-0.5 rounded-full">Out of Stock</span>
+                      )}
+                      {p.isFeatured && (
+                        <span className="bg-amber-400 text-white text-[10px] font-semibold px-2 py-0.5 rounded-full flex items-center gap-0.5">
+                          <Star size={8} fill="white" /> Featured
+                        </span>
+                      )}
+                    </div>
+                    {p.status === "inactive" && (
+                      <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
+                        <span className="bg-black/60 text-white text-xs px-2 py-1 rounded-full">Inactive</span>
+                      </div>
+                    )}
+                    {!isSelectMode && (
+                      <div className="absolute top-2 right-2 flex gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                        <button
+                          onClick={(e) => { e.stopPropagation(); openEdit(p); }}
+                          className="w-7 h-7 bg-white rounded-full flex items-center justify-center shadow hover:bg-[#EEF2FF] transition-colors"
+                        >
+                          <Pencil size={12} className="text-[#6366F1]" />
+                        </button>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); setDeleteTarget(p); }}
+                          className="w-7 h-7 bg-white rounded-full flex items-center justify-center shadow hover:bg-red-50 transition-colors"
+                        >
+                          <Trash2 size={12} className="text-red-500" />
+                        </button>
+                      </div>
                     )}
                   </div>
-                  {p.status === "inactive" && (
-                    <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
-                      <span className="bg-black/60 text-white text-xs px-2 py-1 rounded-full">Inactive</span>
+                  <div className="p-4 flex flex-col flex-1">
+                    <h3 className="font-semibold text-[#0F172A] text-sm line-clamp-1 mb-0.5">{p.name}</h3>
+                    {p.brand && <p className="text-xs text-[#94A3B8] mb-2">{p.brand}</p>}
+                    <div className="flex items-center justify-between text-xs text-[#64748B] mb-3">
+                      {p.dimensions?.length && p.dimensions?.width
+                        ? <span>{p.dimensions.length}×{p.dimensions.width} mm</span>
+                        : <span />}
+                      {p.finish && <Badge variant="outline" className="text-[10px] px-1.5 py-0 capitalize">{p.finish}</Badge>}
                     </div>
-                  )}
-                  <div className="absolute top-2 right-2 flex gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-                    <button
-                      onClick={(e) => { e.stopPropagation(); openEdit(p); }}
-                      className="w-7 h-7 bg-white rounded-full flex items-center justify-center shadow hover:bg-[#EEF2FF] transition-colors"
-                    >
-                      <Pencil size={12} className="text-[#6366F1]" />
-                    </button>
-                    <button
-                      onClick={(e) => { e.stopPropagation(); setDeleteTarget(p); }}
-                      className="w-7 h-7 bg-white rounded-full flex items-center justify-center shadow hover:bg-red-50 transition-colors"
-                    >
-                      <Trash2 size={12} className="text-red-500" />
-                    </button>
+                    <div className="mt-auto">
+                      <p className="text-lg font-bold text-[#6366F1]">{formatINR(p.price)}</p>
+                      <div className="flex justify-between text-xs text-[#94A3B8] mt-1">
+                        {p.tileInBox ? <span>Tiles/Box: {p.tileInBox}</span> : <span />}
+                        <span className={p.stock === 0 ? "text-red-400" : "text-emerald-600"}>Stock: {p.stock}</span>
+                      </div>
+                    </div>
                   </div>
                 </div>
-
-                {/* Content */}
-                <div className="p-4 flex flex-col flex-1">
-                  <h3 className="font-semibold text-[#0F172A] text-sm line-clamp-1 mb-0.5">
-                    {p.name}
-                  </h3>
-                  {p.brand && (
-                    <p className="text-xs text-[#94A3B8] mb-2">{p.brand}</p>
-                  )}
-                  <div className="flex items-center justify-between text-xs text-[#64748B] mb-3">
-                    {p.dimensions?.length && p.dimensions?.width ? (
-                      <span>{p.dimensions.length}×{p.dimensions.width} mm</span>
-                    ) : <span />}
-                    {p.finish && (
-                      <Badge variant="outline" className="text-[10px] px-1.5 py-0 capitalize">
-                        {p.finish}
-                      </Badge>
-                    )}
-                  </div>
-                  <div className="mt-auto">
-                    <p className="text-lg font-bold text-[#6366F1]">{formatINR(p.price)}</p>
-                    <div className="flex justify-between text-xs text-[#94A3B8] mt-1">
-                      {p.tileInBox ? <span>Tiles/Box: {p.tileInBox}</span> : <span />}
-                      <span className={p.stock === 0 ? "text-red-400" : "text-emerald-600"}>
-                        Stock: {p.stock}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         ) : (
-          /* List view */
           <div className="bg-white rounded-2xl border border-[#E2E8F0] shadow-sm overflow-hidden">
-            {products.map((p, i) => (
-              <div
-                key={p._id}
-                onClick={() => router.push(`/dashboard/product-catalogue/${p.slug}`)}
-                className={`flex items-center gap-4 px-4 py-3 hover:bg-[#F8FAFC] transition-colors group cursor-pointer ${i > 0 ? "border-t border-[#F1F5F9]" : ""}`}
-              >
-                <div className="relative shrink-0 w-14 h-14 rounded-xl overflow-hidden border border-[#E2E8F0]">
-                  <img
-                    src={p.thumbnail?.url || p.images?.[0]?.url || "/placeholder.png"}
-                    alt={p.name}
-                    className="w-full h-full object-cover"
-                  />
-                  {p.status === "inactive" && (
-                    <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
-                      <span className="text-white text-[8px] font-medium">OFF</span>
+            {/* Select all row header in list mode */}
+            {isSelectMode && (
+              <div className="flex items-center gap-3 px-4 py-2.5 bg-[#F8FAFC] border-b border-[#F1F5F9]">
+                <button type="button" onClick={toggleSelectAll} className="flex items-center gap-2 text-sm text-[#64748B] hover:text-[#0F172A] transition-colors">
+                  {allPageSelected
+                    ? <CheckSquare2 size={16} className="text-[#6366F1]" />
+                    : somePageSelected
+                    ? <CheckSquare2 size={16} className="text-[#94A3B8]" />
+                    : <Square size={16} className="text-[#94A3B8]" />}
+                  Select all on this page
+                </button>
+              </div>
+            )}
+            {products.map((p, i) => {
+              const isSelected = selectedIds.has(p._id);
+              return (
+                <div
+                  key={p._id}
+                  onClick={(e) => isSelectMode ? toggleSelect(p._id, e) : router.push(`/dashboard/product-catalogue/${p.slug}`)}
+                  className={`flex items-center gap-4 px-4 py-3 transition-colors group cursor-pointer
+                    ${i > 0 ? "border-t border-[#F1F5F9]" : ""}
+                    ${isSelected ? "bg-[#EEF2FF]" : "hover:bg-[#F8FAFC]"}`}
+                >
+                  {isSelectMode && (
+                    <div onClick={(e) => toggleSelect(p._id, e)} className="shrink-0 cursor-pointer">
+                      {isSelected
+                        ? <CheckSquare2 size={18} className="text-[#6366F1]" />
+                        : <Square size={18} className="text-[#94A3B8]" />}
+                    </div>
+                  )}
+                  <div className="relative shrink-0 w-14 h-14 rounded-xl overflow-hidden border border-[#E2E8F0]">
+                    <img
+                      src={p.thumbnail?.url || p.images?.[0]?.url || "/placeholder.png"}
+                      alt={p.name}
+                      className="w-full h-full object-cover"
+                    />
+                    {p.status === "inactive" && (
+                      <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                        <span className="text-white text-[8px] font-medium">OFF</span>
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <h3 className="font-medium text-sm text-[#0F172A] truncate">{p.name}</h3>
+                      {p.isFeatured && (
+                        <span className="shrink-0 bg-amber-100 text-amber-600 text-[10px] font-semibold px-1.5 py-0.5 rounded-full flex items-center gap-0.5">
+                          <Star size={8} fill="currentColor" /> Featured
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-3 mt-0.5 text-xs text-[#94A3B8]">
+                      {p.brand && <span>{p.brand}</span>}
+                      {p.finish && <span className="capitalize">{p.finish}</span>}
+                      {p.sku && <span>SKU: {p.sku}</span>}
+                    </div>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <p className="font-bold text-[#6366F1] text-sm">{formatINR(p.price)}</p>
+                    <p className={`text-xs mt-0.5 ${p.stock === 0 ? "text-red-400" : "text-emerald-600"}`}>Stock: {p.stock ?? 0}</p>
+                  </div>
+                  {!isSelectMode && (
+                    <div className="shrink-0 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button
+                        onClick={(e) => { e.stopPropagation(); openEdit(p); }}
+                        className="w-7 h-7 rounded-lg flex items-center justify-center hover:bg-[#EEF2FF] transition-colors"
+                      >
+                        <Pencil size={13} className="text-[#6366F1]" />
+                      </button>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setDeleteTarget(p); }}
+                        className="w-7 h-7 rounded-lg flex items-center justify-center hover:bg-red-50 transition-colors"
+                      >
+                        <Trash2 size={13} className="text-red-500" />
+                      </button>
                     </div>
                   )}
                 </div>
-
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <h3 className="font-medium text-sm text-[#0F172A] truncate">{p.name}</h3>
-                    {p.isFeatured && (
-                      <span className="shrink-0 bg-amber-100 text-amber-600 text-[10px] font-semibold px-1.5 py-0.5 rounded-full flex items-center gap-0.5">
-                        <Star size={8} fill="currentColor" /> Featured
-                      </span>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-3 mt-0.5 text-xs text-[#94A3B8]">
-                    {p.brand && <span>{p.brand}</span>}
-                    {p.finish && <span className="capitalize">{p.finish}</span>}
-                    {p.sku && <span>SKU: {p.sku}</span>}
-                  </div>
-                </div>
-
-                <div className="text-right shrink-0">
-                  <p className="font-bold text-[#6366F1] text-sm">{formatINR(p.price)}</p>
-                  <p className={`text-xs mt-0.5 ${p.stock === 0 ? "text-red-400" : "text-emerald-600"}`}>
-                    Stock: {p.stock ?? 0}
-                  </p>
-                </div>
-
-                <div className="shrink-0 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <button
-                    onClick={(e) => { e.stopPropagation(); openEdit(p); }}
-                    className="w-7 h-7 rounded-lg flex items-center justify-center hover:bg-[#EEF2FF] transition-colors"
-                  >
-                    <Pencil size={13} className="text-[#6366F1]" />
-                  </button>
-                  <button
-                    onClick={(e) => { e.stopPropagation(); setDeleteTarget(p); }}
-                    className="w-7 h-7 rounded-lg flex items-center justify-center hover:bg-red-50 transition-colors"
-                  >
-                    <Trash2 size={13} className="text-red-500" />
-                  </button>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
@@ -361,11 +494,7 @@ export default function ProductsPage() {
             })()}
           </p>
           <div className="flex items-center gap-1">
-            <Button
-              variant="ghost" size="sm"
-              onClick={() => setPage((p) => p - 1)}
-              disabled={!pagination.hasPrevPage || isFetching}
-            >
+            <Button variant="ghost" size="sm" onClick={() => setPage((p) => p - 1)} disabled={!pagination.hasPrevPage || isFetching}>
               <ChevronLeft size={15} />
             </Button>
             {Array.from({ length: pagination.totalPages }, (_, i) => i + 1)
@@ -391,38 +520,288 @@ export default function ProductsPage() {
                   </Button>
                 )
               )}
-            <Button
-              variant="ghost" size="sm"
-              onClick={() => setPage((p) => p + 1)}
-              disabled={!pagination.hasNextPage || isFetching}
-            >
+            <Button variant="ghost" size="sm" onClick={() => setPage((p) => p + 1)} disabled={!pagination.hasNextPage || isFetching}>
               <ChevronRight size={15} />
             </Button>
           </div>
         </div>
       )}
 
-      {/* Delete Confirmation */}
+      {/* ── Floating bulk action bar ── */}
+      {isSelectMode && selectedIds.size > 0 && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 animate-[fadeInScale_0.2s_ease_both]">
+          <div className="flex items-center gap-3 bg-[#0F172A] text-white rounded-2xl px-5 py-3 shadow-2xl">
+            <div className="flex items-center gap-2">
+              <button type="button" onClick={toggleSelectAll} className="flex items-center gap-1.5 text-sm text-[#94A3B8] hover:text-white transition-colors">
+                {allPageSelected ? <CheckSquare2 size={16} className="text-[#6366F1]" /> : <Square size={16} />}
+                {allPageSelected ? "Deselect page" : "Select page"}
+              </button>
+            </div>
+            <div className="w-px h-4 bg-white/20" />
+            <span className="text-sm font-semibold">{selectedIds.size} selected</span>
+            <div className="w-px h-4 bg-white/20" />
+            <Button
+              size="sm"
+              onClick={() => { setBulkCatForm({ sizeCategory: "", spaceCategories: [], tileUsageCategories: [], mode: "add" }); setBulkCatOpen(true); }}
+              className="bg-[#6366F1] hover:bg-[#4F46E5] text-white border-0 h-8 px-4"
+            >
+              <Tag size={13} className="mr-1.5" />
+              Assign Categories
+            </Button>
+            <Button
+              size="sm"
+              onClick={() => setBulkConfirm(true)}
+              disabled={bulkDelete.isPending}
+              className="bg-red-500 hover:bg-red-600 text-white border-0 h-8 px-4"
+            >
+              <Trash2 size={13} className="mr-1.5" />
+              Delete Selected
+            </Button>
+            <button
+              type="button"
+              onClick={exitSelectMode}
+              className="w-7 h-7 rounded-full flex items-center justify-center hover:bg-white/10 transition-colors text-[#94A3B8] hover:text-white"
+            >
+              <X size={15} />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ── Bulk assign categories ── */}
+      <Dialog open={bulkCatOpen} onOpenChange={setBulkCatOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Tag size={16} className="text-[#6366F1]" />
+              Assign Categories — {selectedIds.size} product{selectedIds.size !== 1 ? "s" : ""}
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="mt-3 space-y-5">
+            {/* Mode toggle */}
+            <div className="flex gap-2">
+              {[{ value: "add", label: "Add to existing" }, { value: "replace", label: "Replace existing" }].map((opt) => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => setBulkCatForm((p) => ({ ...p, mode: opt.value }))}
+                  className={`flex-1 h-9 rounded-lg border text-sm font-medium transition-all cursor-pointer
+                    ${bulkCatForm.mode === opt.value
+                      ? "bg-[#EEF2FF] border-[#6366F1]/40 text-[#6366F1]"
+                      : "bg-white border-[#E2E8F0] text-[#64748B] hover:border-[#6366F1]/30"}`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+            <p className="text-xs text-[#94A3B8] -mt-3">
+              {bulkCatForm.mode === "add"
+                ? "Selected categories will be added without removing existing ones."
+                : "Selected categories will replace all existing ones on the chosen products."}
+            </p>
+
+            {/* Size category */}
+            <div className="space-y-2">
+              <p className="text-xs font-semibold text-[#64748B] uppercase tracking-wide">Size Category</p>
+              <div className="flex flex-wrap gap-2">
+                {sizeCategories.map((c) => (
+                  <button
+                    key={c._id}
+                    type="button"
+                    onClick={() => setBulkCatForm((p) => ({ ...p, sizeCategory: p.sizeCategory === c._id ? "" : c._id }))}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-sm transition-all cursor-pointer
+                      ${bulkCatForm.sizeCategory === c._id
+                        ? "bg-[#EEF2FF] border-[#6366F1]/50 text-[#6366F1] font-medium"
+                        : "bg-white border-[#E2E8F0] text-[#64748B] hover:border-[#6366F1]/30"}`}
+                  >
+                    {bulkCatForm.sizeCategory === c._id && <Check size={12} />}
+                    {c.name}
+                  </button>
+                ))}
+                {sizeCategories.length === 0 && <p className="text-xs text-[#94A3B8]">No size categories found</p>}
+              </div>
+            </div>
+
+            {/* Space categories */}
+            <div className="space-y-2">
+              <p className="text-xs font-semibold text-[#64748B] uppercase tracking-wide">Space Categories</p>
+              <div className="flex flex-wrap gap-2">
+                {spaceCategories.map((c) => {
+                  const selected = bulkCatForm.spaceCategories.includes(c._id);
+                  return (
+                    <button
+                      key={c._id}
+                      type="button"
+                      onClick={() => toggleCatMulti("spaceCategories", c._id)}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-sm transition-all cursor-pointer
+                        ${selected
+                          ? "bg-[#EEF2FF] border-[#6366F1]/50 text-[#6366F1] font-medium"
+                          : "bg-white border-[#E2E8F0] text-[#64748B] hover:border-[#6366F1]/30"}`}
+                    >
+                      {selected && <Check size={12} />}
+                      {c.name}
+                    </button>
+                  );
+                })}
+                {spaceCategories.length === 0 && <p className="text-xs text-[#94A3B8]">No space categories found</p>}
+              </div>
+            </div>
+
+            {/* Tile usage categories */}
+            <div className="space-y-2">
+              <p className="text-xs font-semibold text-[#64748B] uppercase tracking-wide">Tile Usage</p>
+              <div className="flex flex-wrap gap-2">
+                {tileUsageCategories.map((c) => {
+                  const selected = bulkCatForm.tileUsageCategories.includes(c._id);
+                  return (
+                    <button
+                      key={c._id}
+                      type="button"
+                      onClick={() => toggleCatMulti("tileUsageCategories", c._id)}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-sm transition-all cursor-pointer
+                        ${selected
+                          ? "bg-[#EEF2FF] border-[#6366F1]/50 text-[#6366F1] font-medium"
+                          : "bg-white border-[#E2E8F0] text-[#64748B] hover:border-[#6366F1]/30"}`}
+                    >
+                      {selected && <Check size={12} />}
+                      {c.name}
+                    </button>
+                  );
+                })}
+                {tileUsageCategories.length === 0 && <p className="text-xs text-[#94A3B8]">No tile usage categories found</p>}
+              </div>
+            </div>
+          </div>
+
+          {/* Nothing selected warning */}
+          {!bulkCatForm.sizeCategory && !bulkCatForm.spaceCategories.length && !bulkCatForm.tileUsageCategories.length && (
+            <p className="text-xs text-[#94A3B8] mt-2">Select at least one category to apply.</p>
+          )}
+
+          <div className="flex gap-3 mt-5">
+            <Button variant="ghost" className="flex-1" onClick={() => setBulkCatOpen(false)}>Cancel</Button>
+            <Button
+              className="flex-1"
+              onClick={handleBulkCategoryApply}
+              disabled={
+                bulkCatUpdate.isPending ||
+                (!bulkCatForm.sizeCategory && !bulkCatForm.spaceCategories.length && !bulkCatForm.tileUsageCategories.length)
+              }
+            >
+              {bulkCatUpdate.isPending ? <ButtonLoader text="Applying…" /> : `Apply to ${selectedIds.size} Products`}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Single delete confirm ── */}
       <Dialog open={!!deleteTarget} onOpenChange={() => setDeleteTarget(null)}>
         <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle>Delete Product</DialogTitle>
-          </DialogHeader>
+          <DialogHeader><DialogTitle>Delete Product</DialogTitle></DialogHeader>
           <p className="text-sm text-[#64748B] mt-1">
             Are you sure you want to delete <span className="font-medium text-[#0F172A]">{deleteTarget?.name}</span>? This cannot be undone.
           </p>
           <div className="flex gap-3 mt-4">
-            <Button variant="ghost" className="flex-1" onClick={() => setDeleteTarget(null)}>
-              Cancel
-            </Button>
+            <Button variant="ghost" className="flex-1" onClick={() => setDeleteTarget(null)}>Cancel</Button>
             <Button
-              className="flex-1 bg-red-500 hover:bg-red-600 text-white disabled:cursor-not-allowed"
+              className="flex-1 bg-red-500 hover:bg-red-600 text-white"
               onClick={confirmDelete}
               disabled={deleteProduct.isPending}
             >
               {deleteProduct.isPending ? <ButtonLoader text="Deleting…" /> : "Delete"}
             </Button>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Bulk delete confirm ── */}
+      <Dialog open={bulkConfirmOpen} onOpenChange={setBulkConfirm}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-[#EF4444]">
+              <Trash2 size={18} /> Delete {selectedIds.size} Products
+            </DialogTitle>
+          </DialogHeader>
+          <div className="mt-2 space-y-3">
+            <p className="text-sm text-[#64748B]">
+              You are about to permanently delete <span className="font-bold text-[#0F172A]">{selectedIds.size} product{selectedIds.size !== 1 ? "s" : ""}</span> and all their images from storage.
+              This action <span className="font-semibold text-red-500">cannot be undone</span>.
+            </p>
+            <div className="bg-[#FFF8E1] rounded-xl px-3 py-2.5 border border-[#FDE68A] text-xs text-[#92400E]">
+              Deletion runs in the background. You can continue using the app while it processes.
+            </div>
+          </div>
+          <div className="flex gap-3 mt-4">
+            <Button variant="ghost" className="flex-1" onClick={() => setBulkConfirm(false)}>Cancel</Button>
+            <Button
+              className="flex-1 bg-red-500 hover:bg-red-600 text-white"
+              onClick={handleBulkDeleteConfirm}
+              disabled={bulkDelete.isPending}
+            >
+              {bulkDelete.isPending ? <ButtonLoader text="Starting…" /> : `Delete ${selectedIds.size} Products`}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Bulk delete progress ── */}
+      <Dialog open={bulkProgressOpen} onOpenChange={(open) => { if (!open && jobDone) { setBulkProgressOpen(false); setBulkJobId(null); } }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>
+              {!bulkStatusData ? "Starting deletion…"
+                : jobFailed    ? "Deletion failed"
+                : jobDone      ? "Deletion complete"
+                : "Deleting products…"}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="mt-4 space-y-4">
+            {/* Status icon */}
+            <div className="flex flex-col items-center gap-3 py-2">
+              {!bulkStatusData || bulkStatusData.status === "queued" || bulkStatusData.status === "processing" ? (
+                <Loader2 size={40} className="animate-spin text-[#6366F1]" />
+              ) : jobFailed ? (
+                <AlertCircle size={40} className="text-red-500" />
+              ) : (
+                <CheckCircle2 size={40} className="text-emerald-500" />
+              )}
+
+              <div className="text-center">
+                <p className="text-sm text-[#64748B]">
+                  {!bulkStatusData ? "Queuing job…"
+                    : bulkStatusData.status === "queued"     ? "Waiting in queue…"
+                    : bulkStatusData.status === "processing" ? `Deleting… ${bulkStatusData.successCount ?? 0} of ${bulkStatusData.total} done`
+                    : jobFailed ? (bulkStatusData.errorMessage || "An error occurred during deletion.")
+                    : `${bulkStatusData.successCount} of ${bulkStatusData.total} products deleted successfully.`}
+                </p>
+                {bulkStatusData && !jobFailed && (
+                  <p className="text-xs text-[#94A3B8] mt-1">
+                    {bulkStatusData.failedCount > 0 ? `${bulkStatusData.failedCount} failed` : ""}
+                  </p>
+                )}
+              </div>
+            </div>
+
+            {/* Progress bar */}
+            {bulkStatusData?.total > 0 && (
+              <div className="w-full bg-[#F1F5F9] rounded-full h-2 overflow-hidden">
+                <div
+                  className={`h-2 rounded-full transition-all duration-500 ${jobFailed ? "bg-red-400" : "bg-[#6366F1]"}`}
+                  style={{ width: `${Math.round(((bulkStatusData.successCount ?? 0) / bulkStatusData.total) * 100)}%` }}
+                />
+              </div>
+            )}
+          </div>
+
+          {jobDone && (
+            <Button
+              className="w-full mt-4"
+              onClick={() => { setBulkProgressOpen(false); setBulkJobId(null); }}
+            >
+              Done
+            </Button>
+          )}
         </DialogContent>
       </Dialog>
     </div>

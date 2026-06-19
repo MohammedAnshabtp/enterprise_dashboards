@@ -13,6 +13,7 @@ import {
   getBulkUploadJobService,
 } from "../services/productsService";
 import { deleteProductService } from "../services/productService";
+import { bulkDeleteProductsService, getBulkDeleteStatusService, bulkCategoryUpdateService } from "../services/productBulkService";
 
 export const PRODUCTS_KEY = ["products"];
 
@@ -149,6 +150,42 @@ export function useBulkUploadHistory(params = {}) {
       })),
     staleTime: 1000 * 30,
     placeholderData: (prev) => prev,
+  });
+}
+
+export function useBulkCategoryUpdate() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (payload) => bulkCategoryUpdateService(payload).then((r) => r.data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: PRODUCTS_KEY });
+      toast.success("Categories updated for selected products");
+    },
+    onError: (err) => {
+      toast.error(err.response?.data?.message || "Bulk category update failed");
+    },
+  });
+}
+
+export function useBulkDeleteProducts() {
+  return useMutation({
+    mutationFn: (productIds) => bulkDeleteProductsService(productIds).then((r) => r.data),
+    onError: (err) => {
+      toast.error(err.response?.data?.message || "Bulk delete failed");
+    },
+  });
+}
+
+export function useBulkDeleteStatus(jobId) {
+  return useQuery({
+    queryKey: ["bulk-delete-status", jobId],
+    queryFn: () => getBulkDeleteStatusService(jobId).then((r) => r.data?.data ?? null),
+    enabled: !!jobId,
+    refetchInterval: (query) => {
+      const s = query.state.data?.status;
+      if (s === "completed" || s === "failed") return false;
+      return 3000;
+    },
   });
 }
 

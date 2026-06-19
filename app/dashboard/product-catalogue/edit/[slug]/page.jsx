@@ -115,10 +115,12 @@ function MultiSelect({ options, value = [], onChange, placeholder = "Select…" 
   const selectedOptions = options.filter((o) => value.includes(o._id));
   return (
     <div className="relative">
-      <button
-        type="button"
+      <div
+        role="button"
+        tabIndex={0}
         onClick={() => setOpen((v) => !v)}
-        className="w-full min-h-[38px] px-3 py-2 rounded-lg border border-[#E2E8F0] bg-white text-sm text-left flex flex-wrap gap-1.5 items-center hover:border-[#6366F1]/50 focus:outline-none focus:ring-2 focus:ring-[#6366F1]/30 transition-colors"
+        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") setOpen((v) => !v); }}
+        className="w-full min-h-[38px] px-3 py-2 rounded-lg border border-[#E2E8F0] bg-white text-sm text-left flex flex-wrap gap-1.5 items-center hover:border-[#6366F1]/50 focus:outline-none focus:ring-2 focus:ring-[#6366F1]/30 transition-colors cursor-pointer"
       >
         {selectedOptions.length === 0 ? (
           <span className="text-[#94A3B8]">{placeholder}</span>
@@ -132,7 +134,7 @@ function MultiSelect({ options, value = [], onChange, placeholder = "Select…" 
             </span>
           ))
         )}
-      </button>
+      </div>
       {open && (
         <div className="absolute z-20 mt-1 w-full bg-white border border-[#E2E8F0] rounded-xl shadow-lg max-h-52 overflow-y-auto">
           {options.length === 0 ? (
