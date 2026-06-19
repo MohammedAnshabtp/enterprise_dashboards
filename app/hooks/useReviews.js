@@ -10,10 +10,15 @@ import {
 
 export const REVIEWS_KEY = ["reviews"];
 
-export function useAdminReviews() {
+export function useAdminReviews(params) {
   return useQuery({
-    queryKey: [...REVIEWS_KEY, "admin"],
-    queryFn: () => getAdminReviewsService().then((r) => r.data?.data || []),
+    queryKey: [...REVIEWS_KEY, "admin", params],
+    queryFn: () =>
+      getAdminReviewsService(params).then((r) => ({
+        data: r.data?.data ?? [],
+        pagination: r.data?.pagination ?? {},
+      })),
+    placeholderData: (prev) => prev,
   });
 }
 

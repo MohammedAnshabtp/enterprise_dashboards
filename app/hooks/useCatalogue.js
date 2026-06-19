@@ -9,10 +9,19 @@ import {
 
 export const CATALOGUE_KEY = ["catalogue"];
 
-export function useCatalogue() {
+const extract = (r) => {
+  const raw = r.data?.data;
+  if (raw && typeof raw === "object" && !Array.isArray(raw) && raw.data) {
+    return { data: raw.data, pagination: raw.pagination ?? {} };
+  }
+  return { data: Array.isArray(raw) ? raw : [], pagination: {} };
+};
+
+export function useCatalogue(params) {
   return useQuery({
-    queryKey: CATALOGUE_KEY,
-    queryFn: () => getCatalogueService().then((r) => r.data?.data || []),
+    queryKey: [...CATALOGUE_KEY, params],
+    queryFn: () => getCatalogueService(params).then(extract),
+    placeholderData: (prev) => prev,
   });
 }
 

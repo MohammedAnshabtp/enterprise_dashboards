@@ -12,7 +12,12 @@ export const COUPONS_KEY = ["coupons"];
 export function useAdminCoupons(params) {
   return useQuery({
     queryKey: [...COUPONS_KEY, params],
-    queryFn: () => getAdminCoupons(params).then((r) => r.data?.data || []),
+    queryFn: () =>
+      getAdminCoupons(params).then((r) => ({
+        data: r.data?.data ?? [],
+        pagination: r.data?.pagination ?? {},
+      })),
+    placeholderData: (prev) => prev,
   });
 }
 

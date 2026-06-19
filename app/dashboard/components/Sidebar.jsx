@@ -14,10 +14,8 @@ import {
   Image,
   ShoppingBag,
   BookOpen,
-  Heart,
   Tag,
   Megaphone,
-  QrCode,
   Activity,
   ChevronLeft,
   ChevronRight,
@@ -38,10 +36,8 @@ const menu = [
   { label: "Banners",           path: "/dashboard/banners",           icon: Image },
   { label: "Products",          path: "/dashboard/products",          icon: ShoppingBag },
   { label: "Catalogue",         path: "/dashboard/catalogue",         icon: BookOpen },
-  { label: "Wish List",         path: "/dashboard/wishlist-page",     icon: Heart },
   { label: "Admin Coupon",      path: "/dashboard/admin-coupons",     icon: Tag },
   { label: "Admin Banner",      path: "/dashboard/admin-banners",     icon: Megaphone },
-  { label: "Coupon Validator",  path: "/dashboard/coupon-validator",  icon: QrCode },
   { label: "System Health",     path: "/dashboard/integrations",      icon: Activity },
 ];
 
