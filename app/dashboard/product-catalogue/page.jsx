@@ -275,7 +275,8 @@ export default function ProductsPage() {
             {products.map((p) => (
               <div
                 key={p._id}
-                className="bg-white rounded-2xl border border-[#E2E8F0] shadow-sm hover:shadow-md hover:border-[#6366F1]/30 transition-all duration-200 overflow-hidden group flex flex-col"
+                onClick={() => router.push(`/dashboard/product-catalogue/${p.slug}`)}
+                className="bg-white rounded-2xl border border-[#E2E8F0] shadow-sm hover:shadow-md hover:border-[#6366F1]/30 transition-all duration-200 overflow-hidden group flex flex-col cursor-pointer"
               >
                 {/* Image */}
                 <div className="relative overflow-hidden">
@@ -303,13 +304,13 @@ export default function ProductsPage() {
                   )}
                   <div className="absolute top-2 right-2 flex gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
                     <button
-                      onClick={() => openEdit(p)}
+                      onClick={(e) => { e.stopPropagation(); openEdit(p); }}
                       className="w-7 h-7 bg-white rounded-full flex items-center justify-center shadow hover:bg-[#EEF2FF] transition-colors"
                     >
                       <Pencil size={12} className="text-[#6366F1]" />
                     </button>
                     <button
-                      onClick={() => setDeleteTarget(p)}
+                      onClick={(e) => { e.stopPropagation(); setDeleteTarget(p); }}
                       className="w-7 h-7 bg-white rounded-full flex items-center justify-center shadow hover:bg-red-50 transition-colors"
                     >
                       <Trash2 size={12} className="text-red-500" />
@@ -354,7 +355,8 @@ export default function ProductsPage() {
             {products.map((p, i) => (
               <div
                 key={p._id}
-                className={`flex items-center gap-4 px-4 py-3 hover:bg-[#F8FAFC] transition-colors group ${i > 0 ? "border-t border-[#F1F5F9]" : ""}`}
+                onClick={() => router.push(`/dashboard/product-catalogue/${p.slug}`)}
+                className={`flex items-center gap-4 px-4 py-3 hover:bg-[#F8FAFC] transition-colors group cursor-pointer ${i > 0 ? "border-t border-[#F1F5F9]" : ""}`}
               >
                 <div className="relative shrink-0 w-14 h-14 rounded-xl overflow-hidden border border-[#E2E8F0]">
                   <img
@@ -394,13 +396,13 @@ export default function ProductsPage() {
 
                 <div className="shrink-0 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                   <button
-                    onClick={() => openEdit(p)}
+                    onClick={(e) => { e.stopPropagation(); openEdit(p); }}
                     className="w-7 h-7 rounded-lg flex items-center justify-center hover:bg-[#EEF2FF] transition-colors"
                   >
                     <Pencil size={13} className="text-[#6366F1]" />
                   </button>
                   <button
-                    onClick={() => setDeleteTarget(p)}
+                    onClick={(e) => { e.stopPropagation(); setDeleteTarget(p); }}
                     className="w-7 h-7 rounded-lg flex items-center justify-center hover:bg-red-50 transition-colors"
                   >
                     <Trash2 size={13} className="text-red-500" />

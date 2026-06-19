@@ -86,3 +86,12 @@ export const updateProductService = (id, data) => {
 
   return api.patch(ENDPOINTS.UPDATE_PRODUCT(id), formData);
 };
+
+export const getProductBySlugService = (slug) =>
+  api.get(ENDPOINTS.GET_PRODUCT_BY_SLUG(slug));
+
+export const toggleProductStatusService = (id, status) =>
+  api.patch(ENDPOINTS.TOGGLE_PRODUCT_STATUS(id), status ? { status } : {});
+
+export const toggleProductFeatureService = (id) =>
+  api.patch(ENDPOINTS.TOGGLE_PRODUCT_FEATURE(id));

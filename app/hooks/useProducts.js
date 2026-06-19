@@ -4,6 +4,9 @@ import {
   getProductsService,
   createProductService,
   updateProductService,
+  getProductBySlugService,
+  toggleProductStatusService,
+  toggleProductFeatureService,
 } from "../services/productsService";
 import { deleteProductService } from "../services/productService";
 
@@ -60,6 +63,44 @@ export function useDeleteProduct() {
     },
     onError: (err) => {
       toast.error(err.response?.data?.message || "Failed to delete product");
+    },
+  });
+}
+
+export function useProduct(slug) {
+  return useQuery({
+    queryKey: ["product", slug],
+    queryFn: () => getProductBySlugService(slug).then((r) => r.data?.data ?? null),
+    enabled: !!slug,
+  });
+}
+
+export function useToggleProductStatus() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, status }) => toggleProductStatusService(id, status),
+    onSuccess: (_, { id }) => {
+      queryClient.invalidateQueries({ queryKey: PRODUCTS_KEY });
+      queryClient.invalidateQueries({ queryKey: ["product"] });
+      toast.success("Product status updated");
+    },
+    onError: (err) => {
+      toast.error(err.response?.data?.message || "Failed to update status");
+    },
+  });
+}
+
+export function useToggleProductFeature() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id) => toggleProductFeatureService(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: PRODUCTS_KEY });
+      queryClient.invalidateQueries({ queryKey: ["product"] });
+      toast.success("Featured status updated");
+    },
+    onError: (err) => {
+      toast.error(err.response?.data?.message || "Failed to update featured");
     },
   });
 }

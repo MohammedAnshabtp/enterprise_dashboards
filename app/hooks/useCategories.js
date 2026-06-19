@@ -47,6 +47,7 @@ export function useSizeCategories(params) {
     queryKey: [...SIZE_CATEGORIES_KEY, params],
     queryFn: () => getSizeCategoriesService(params).then(extractPaginated),
     placeholderData: (prev) => prev,
+    enabled: !!params,
   });
 }
 
@@ -99,6 +100,7 @@ export function useSpaceCategories(params) {
     queryKey: [...SPACE_CATEGORIES_KEY, params],
     queryFn: () => getSpaceCategoriesService(params).then(extractSpace),
     placeholderData: (prev) => prev,
+    enabled: !!params,
   });
 }
 
@@ -151,6 +153,7 @@ export function useTileUsageCategories(params) {
     queryKey: [...TILE_USAGE_CATEGORIES_KEY, params],
     queryFn: () => getTileUsageCategoriesService(params).then(extractPaginated),
     placeholderData: (prev) => prev,
+    enabled: !!params,
   });
 }
 

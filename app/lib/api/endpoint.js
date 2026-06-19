@@ -99,9 +99,12 @@ export const ENDPOINTS = {
 
   // PRODUCTS
   GET_PRODUCTS: "/api/v1/product",
+  GET_PRODUCT_BY_SLUG: (slug) => `/api/v1/product/${slug}`,
   CREATE_PRODUCT: "/api/v1/product/",
   UPDATE_PRODUCT: (id) => `/api/v1/product/${id}`,
   DELETE_PRODUCT: (id) => `/api/v1/product/${id}`,
+  TOGGLE_PRODUCT_STATUS: (id) => `/api/v1/product/${id}/status`,
+  TOGGLE_PRODUCT_FEATURE: (id) => `/api/v1/product/${id}/feature`,
 
   // FEATURED
   GET_FEATURED_PRODUCTS: "/api/v1/product/featured-products",

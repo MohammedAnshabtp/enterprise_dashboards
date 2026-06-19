@@ -6,10 +6,6 @@ import {
   Users,
   UserCircle,
   Package,
-  LayoutGrid,
-  Ruler,
-  Palette,
-  Grid3x3,
   Star,
   Image,
   ShoppingBag,
@@ -25,20 +21,15 @@ import { useUIStore } from "../../store/uiStore";
 import { cn } from "../../lib/cn";
 
 const menu = [
-  { label: "Users",              path: "/dashboard/user-visit",        icon: Users },
-  { label: "User Profile",      path: "/dashboard/user-profile",      icon: UserCircle },
-  { label: "Products",          path: "/dashboard/product-catalogue", icon: Package },
-  { label: "Space Category",    path: "/dashboard/space-category",    icon: LayoutGrid },
-  { label: "Size Category",     path: "/dashboard/size-category",     icon: Ruler },
-  { label: "Product Style",     path: "/dashboard/product-style",     icon: Palette },
-  { label: "Tile Usage",        path: "/dashboard/tile-usage",        icon: Grid3x3 },
-  { label: "Admin Reviews",     path: "/dashboard/admin-reviews",     icon: Star },
-  { label: "Banners",           path: "/dashboard/banners",           icon: Image },
-  { label: "Products",          path: "/dashboard/products",          icon: ShoppingBag },
-  { label: "Catalogue",         path: "/dashboard/catalogue",         icon: BookOpen },
-  { label: "Admin Coupon",      path: "/dashboard/admin-coupons",     icon: Tag },
-  { label: "Admin Banner",      path: "/dashboard/admin-banners",     icon: Megaphone },
-  { label: "System Health",     path: "/dashboard/integrations",      icon: Activity },
+  { label: "Users",         path: "/dashboard/user-visit",        icon: Users },
+  { label: "User Profile",  path: "/dashboard/user-profile",      icon: UserCircle },
+  { label: "Products",      path: "/dashboard/product-catalogue", icon: Package },
+  { label: "Categories",    path: "/dashboard/categories",        icon: Layers },
+  { label: "Reviews",       path: "/dashboard/admin-reviews",     icon: Star },
+  { label: "Catalogue",     path: "/dashboard/catalogue",         icon: BookOpen },
+  { label: "Banners",       path: "/dashboard/admin-banners",     icon: Megaphone },
+  { label: "Coupons",       path: "/dashboard/admin-coupons",     icon: Tag },
+  { label: "System Health", path: "/dashboard/integrations",      icon: Activity },
 ];
 
 export default function Sidebar() {
