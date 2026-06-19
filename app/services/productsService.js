@@ -27,6 +27,7 @@ export const createProductService = (data) => {
   append("discountPercent", data.discountPercent);
   append("gst", data.gst);
   append("weight", data.weight);
+  append("stock", data.stock);
   append("tileInBox", data.tileInBox);
   append("minOrderQuantity", data.minOrderQuantity);
   append("maxOrderQuantity", data.maxOrderQuantity);
@@ -86,6 +87,7 @@ export const updateProductService = (id, data) => {
   append("discountPercent", data.discountPercent);
   append("gst", data.gst);
   append("weight", data.weight);
+  append("stock", data.stock);
   append("tileInBox", data.tileInBox);
   append("minOrderQuantity", data.minOrderQuantity);
   append("maxOrderQuantity", data.maxOrderQuantity);

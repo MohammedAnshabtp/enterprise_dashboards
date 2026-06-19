@@ -1,20 +1,20 @@
 export const ENDPOINTS = {
   // AUTH
   SIGNUP: "/api/v1/auth/signup",
-  LOGIN: "/api/auth/v1/login",
-  LOGOUT: "/api/auth/v1/logout",
-  REFRESH_TOKEN: "/api/auth/v1/refresh-token",
+  LOGIN: "/api/v1/auth/login",
+  LOGOUT: "/api/v1/auth/logout",
+  REFRESH_TOKEN: "/api/v1/auth/refresh-token",
 
   GET_PROFILE: "/api/v1/auth/user/profile",
   UPDATE_PROFILE: "/api/v1/auth/user/profile/update",
 
   // OTP
-  SEND_EMAIL_OTP: "/api/auth/v1/signup/email/get-otp",
-  VERIFY_EMAIL_OTP: "/api/auth/v1/verify/email/otp",
+  SEND_EMAIL_OTP: "/api/v1/auth/signup/email/get-otp",
+  VERIFY_EMAIL_OTP: "/api/v1/auth/verify/email/otp",
 
   // PASSWORD
-  FORGET_PASSWORD: "/api/auth/v1/forget-password",
-  UPDATE_PASSWORD: "/api/auth/v1/update-password",
+  FORGET_PASSWORD: "/api/v1/auth/forget-password",
+  UPDATE_PASSWORD: "/api/v1/auth/update-password",
 
   // AVATAR
   UPLOAD_AVATAR: "/api/v1/auth/user/avatar",
@@ -29,11 +29,6 @@ export const ENDPOINTS = {
   ADDRESS: "/api/v1/address/",
   ADDRESS_BY_ID: (id) => `/api/v1/address/${id}`,
   ADDRESS_SET_DEFAULT: (id) => `/api/v1/address/${id}/default`,
-
-  // PRODUCTS
-  CREATE_PRODUCT: "/api/v1/product/",
-  GET_PRODUCT: "/api/v1/product/",
-  UPDATE_PRODUCT: (id) => `/api/v1/product/${id}`,
 
   // SPACE CATEGORY
   GET_SPACE_CATEGORIES: "/api/v1/category/space",
@@ -128,11 +123,6 @@ export const ENDPOINTS = {
 
   // BULK CATEGORY UPDATE
   PRODUCT_BULK_CATEGORIES: "/api/v1/product/bulk-categories",
-  // SIZE CATEGORY
-  GET_SIZE_CATEGORIES: "/api/v1/size-category",
-
-  // TILE USAGE CATEGORY
-  GET_TILE_USAGE_CATEGORIES: "/api/v1/tile-usage-category",
 
   // ADMIN INTEGRATIONS
   GET_INTEGRATIONS: "/api/v1/admin/integrations/",

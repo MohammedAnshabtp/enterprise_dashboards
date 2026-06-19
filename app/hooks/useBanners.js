@@ -31,6 +31,7 @@ export function useCreateBanner() {
     mutationFn: createBannerService,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: BANNERS_KEY });
+      queryClient.invalidateQueries({ queryKey: ADMIN_BANNERS_KEY });
       toast.success("Banner created");
     },
     onError: (err) => {
@@ -45,6 +46,7 @@ export function useUpdateBanner() {
     mutationFn: ({ id, data }) => updateBannerService(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: BANNERS_KEY });
+      queryClient.invalidateQueries({ queryKey: ADMIN_BANNERS_KEY });
       toast.success("Banner updated");
     },
     onError: (err) => {
@@ -59,6 +61,7 @@ export function useDeleteBanner() {
     mutationFn: (id) => deleteBannerService(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: BANNERS_KEY });
+      queryClient.invalidateQueries({ queryKey: ADMIN_BANNERS_KEY });
       toast.success("Banner deleted");
     },
     onError: (err) => {

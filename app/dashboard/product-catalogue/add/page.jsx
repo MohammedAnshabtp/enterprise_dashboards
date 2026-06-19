@@ -75,6 +75,7 @@ const manualSchema = yup.object({
   discountPercent: yup.number().typeError("Must be a number").min(0, "Must be 0–100").max(100, "Must be 0–100").nullable().transform(emptyToNull),
   gst: yup.number().typeError("Must be a number").min(0, "Must be ≥ 0").nullable().transform(emptyToNull),
   weight: yup.number().typeError("Must be a number").positive("Must be > 0").nullable().transform(emptyToNull),
+  stock: yup.number().typeError("Must be a number").min(0, "Must be 0 or more").integer("Must be a whole number").nullable().transform(emptyToNull),
   tileInBox: yup.number().typeError("Must be a number").positive("Must be > 0").integer("Must be a whole number").nullable().transform(emptyToNull),
   minOrderQuantity: yup.number().typeError("Must be a number").positive("Must be > 0").integer("Must be a whole number").nullable().transform(emptyToNull),
   maxOrderQuantity: yup.number().typeError("Must be a number").positive("Must be > 0").integer("Must be a whole number").nullable().transform(emptyToNull),
@@ -945,10 +946,12 @@ function ManualEntryForm() {
 
           <SectionCard title="Inventory">
             <FieldRow>
+              <Field label="Stock Quantity" error={errors.stock?.message}>
+                <Input type="number" placeholder="e.g. 100" {...register("stock")} />
+              </Field>
               <Field label="Tiles per Box" error={errors.tileInBox?.message}>
                 <Input type="number" placeholder="e.g. 4" {...register("tileInBox")} />
               </Field>
-              <div />
             </FieldRow>
             <FieldRow>
               <Field label="Min. Order Quantity" error={errors.minOrderQuantity?.message}>

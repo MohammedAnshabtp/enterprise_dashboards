@@ -41,11 +41,15 @@ const schema = yup.object({
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-function getExpiryInfo(expiresAt) {
+function getExpiryInfo(expiresAt, isActive = true) {
   if (!expiresAt) return { label: "Never expires", short: "No expiry", color: "#94A3B8", urgent: false, expired: false };
   const d   = dayjs(expiresAt);
   const now = dayjs();
-  if (d.isBefore(now)) return { label: "Expired", short: "Expired", color: "#EF4444", urgent: true, expired: true };
+  if (d.isBefore(now)) {
+    // Date is in the past — only label as "Expired" if the coupon is also inactive
+    if (!isActive) return { label: "Expired", short: "Expired", color: "#EF4444", urgent: true, expired: true };
+    return { label: d.format("DD MMM YYYY"), short: d.format("DD MMM YY"), color: "#F59E0B", urgent: true, expired: false };
+  }
   const days = d.diff(now, "day");
   if (days <= 3) return { label: `Expires in ${days}d`, short: `${days}d left`, color: "#EF4444", urgent: true, expired: false };
   if (days <= 7) return { label: `Expires in ${days}d`, short: `${days}d left`, color: "#F59E0B", urgent: true, expired: false };
@@ -308,7 +312,7 @@ export default function AdminCouponsPage() {
             <div className="divide-y divide-[#F1F5F9]">
               {filteredItems.map((item) => {
                 const discount = getDiscountText(item.type, item.value, item.maxDiscount);
-                const expiry   = getExpiryInfo(item.expiresAt);
+                const expiry   = getExpiryInfo(item.expiresAt, item.isActive);
                 const isToggling = togglingId === item._id;
 
                 return (

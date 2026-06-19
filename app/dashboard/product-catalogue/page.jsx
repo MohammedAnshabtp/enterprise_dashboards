@@ -5,7 +5,7 @@ import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import {
   Search, Plus, SlidersHorizontal, ChevronLeft, ChevronRight,
-  Star, Trash2, Pencil, LayoutGrid, List,
+  Star, Trash2, Pencil, LayoutGrid, List, X, Package,
 } from "lucide-react";
 import {
   useProducts, useDeleteProduct,

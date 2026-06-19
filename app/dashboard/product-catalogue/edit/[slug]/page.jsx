@@ -40,6 +40,7 @@ const schema = yup.object({
   gst:              yup.number().typeError("Must be a number").min(0).nullable().transform(emptyToNull),
   weight:           yup.number().typeError("Must be a number").positive().nullable().transform(emptyToNull),
   tileInBox:        yup.number().typeError("Must be a number").positive().integer().nullable().transform(emptyToNull),
+  stock:            yup.number().typeError("Must be a number").min(0).integer().nullable().transform(emptyToNull),
   minOrderQuantity: yup.number().typeError("Must be a number").positive().integer().nullable().transform(emptyToNull),
   maxOrderQuantity: yup.number().typeError("Must be a number").positive().integer().nullable().transform(emptyToNull),
   hsnCode:          yup.string().nullable(),
@@ -215,6 +216,7 @@ export default function EditProductPage() {
       gst:              product.gst ?? "",
       weight:           product.weight ?? "",
       tileInBox:        product.tileInBox ?? "",
+      stock:            product.stock ?? "",
       minOrderQuantity: product.minOrderQuantity ?? "",
       maxOrderQuantity: product.maxOrderQuantity ?? "",
       hsnCode:          product.hsnCode ?? "",
@@ -398,10 +400,12 @@ export default function EditProductPage() {
 
             <SectionCard title="Inventory">
               <FieldRow>
+                <Field label="Stock Quantity" error={errors.stock?.message}>
+                  <Input type="number" placeholder="e.g. 100" {...register("stock")} />
+                </Field>
                 <Field label="Tiles per Box" error={errors.tileInBox?.message}>
                   <Input type="number" placeholder="e.g. 4" {...register("tileInBox")} />
                 </Field>
-                <div />
               </FieldRow>
               <FieldRow>
                 <Field label="Min. Order Quantity" error={errors.minOrderQuantity?.message}>
