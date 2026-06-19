@@ -4,7 +4,7 @@ import api from "../lib/api/axios";
 import { ENDPOINTS } from "../lib/api/endpoint";
 
 // GET
-export const getCatalogueService = () => api.get(ENDPOINTS.GET_CATALOGUE);
+export const getCatalogueService = (params) => api.get(ENDPOINTS.GET_CATALOGUE, { params });
 
 // CREATE ✅ FIXED
 export const createCatalogueService = (data) => {

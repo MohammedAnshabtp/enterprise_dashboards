@@ -39,3 +39,8 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# project docs
+CLAUDE.md
+API_INTEGRATION_STATUS.md
+README.md

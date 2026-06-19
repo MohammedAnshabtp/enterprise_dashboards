@@ -32,3 +32,6 @@ export const getProductsService = (query) => {
     params: query,
   });
 };
+
+export const deleteProductService = (id) =>
+  api.delete(ENDPOINTS.DELETE_PRODUCT(id));

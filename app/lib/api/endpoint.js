@@ -1,32 +1,34 @@
 export const ENDPOINTS = {
   // AUTH
   SIGNUP: "/api/v1/auth/signup",
-  LOGIN: "/api/auth/v1/login",
-  LOGOUT: "/api/auth/v1/logout",
-  REFRESH_TOKEN: "/api/auth/v1/refresh-token",
+  LOGIN: "/api/v1/auth/login",
+  LOGOUT: "/api/v1/auth/logout",
+  REFRESH_TOKEN: "/api/v1/auth/refresh-token",
 
   GET_PROFILE: "/api/v1/auth/user/profile",
   UPDATE_PROFILE: "/api/v1/auth/user/profile/update",
 
   // OTP
-  SEND_EMAIL_OTP: "/api/auth/v1/signup/email/get-otp",
-  VERIFY_EMAIL_OTP: "/api/auth/v1/verify/email/otp",
+  SEND_EMAIL_OTP: "/api/v1/auth/signup/email/get-otp",
+  VERIFY_EMAIL_OTP: "/api/v1/auth/verify/email/otp",
 
   // PASSWORD
-  FORGET_PASSWORD: "/api/auth/v1/forget-password",
-  UPDATE_PASSWORD: "/api/auth/v1/update-password",
+  FORGET_PASSWORD: "/api/v1/auth/forget-password",
+  UPDATE_PASSWORD: "/api/v1/auth/update-password",
 
   // AVATAR
   UPLOAD_AVATAR: "/api/v1/auth/user/avatar",
   DELETE_AVATAR: "/api/v1/auth/user/avatar",
 
+  // ADMIN — USERS
+  GET_ALL_USERS: "/api/v1/auth/users",
+  DELETE_USER: (id) => `/api/v1/auth/user/${id}`,
+  UPDATE_USER_STATUS: "/api/v1/auth/user/update-status",
+
   // ADDRESS
   ADDRESS: "/api/v1/address/",
-
-  // PRODUCTS
-  CREATE_PRODUCT: "/api/v1/product/",
-  GET_PRODUCT: "/api/v1/product/",
-  UPDATE_PRODUCT: (id) => `/api/v1/product/${id}`,
+  ADDRESS_BY_ID: (id) => `/api/v1/address/${id}`,
+  ADDRESS_SET_DEFAULT: (id) => `/api/v1/address/${id}/default`,
 
   // SPACE CATEGORY
   GET_SPACE_CATEGORIES: "/api/v1/category/space",
@@ -94,8 +96,12 @@ export const ENDPOINTS = {
 
   // PRODUCTS
   GET_PRODUCTS: "/api/v1/product",
+  GET_PRODUCT_BY_SLUG: (slug) => `/api/v1/product/${slug}`,
   CREATE_PRODUCT: "/api/v1/product/",
   UPDATE_PRODUCT: (id) => `/api/v1/product/${id}`,
+  DELETE_PRODUCT: (id) => `/api/v1/product/${id}`,
+  TOGGLE_PRODUCT_STATUS: (id) => `/api/v1/product/${id}/status`,
+  TOGGLE_PRODUCT_FEATURE: (id) => `/api/v1/product/${id}/feature`,
 
   // FEATURED
   GET_FEATURED_PRODUCTS: "/api/v1/product/featured-products",
@@ -117,11 +123,6 @@ export const ENDPOINTS = {
 
   // BULK CATEGORY UPDATE
   PRODUCT_BULK_CATEGORIES: "/api/v1/product/bulk-categories",
-  // SIZE CATEGORY
-  GET_SIZE_CATEGORIES: "/api/v1/size-category",
-
-  // TILE USAGE CATEGORY
-  GET_TILE_USAGE_CATEGORIES: "/api/v1/tile-usage-category",
 
   // ADMIN INTEGRATIONS
   GET_INTEGRATIONS: "/api/v1/admin/integrations/",

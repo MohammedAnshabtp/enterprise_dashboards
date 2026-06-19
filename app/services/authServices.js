@@ -11,7 +11,7 @@ export const sendOtp = (email) => api.post(ENDPOINTS.SEND_EMAIL_OTP, { email });
 export const verifyOtp = (data) => api.post(ENDPOINTS.VERIFY_EMAIL_OTP, data);
 export const forgotPassword = (email) =>
   api.post(ENDPOINTS.FORGET_PASSWORD, { email });
-export const updatePassword = () => api.patch(ENDPOINTS.UPDATE_PASSWORD, data);
+export const updatePassword = (data) => api.patch(ENDPOINTS.UPDATE_PASSWORD, data);
 
 export const updateProfileService = (data) => {
   return api.patch(ENDPOINTS.UPDATE_PROFILE, data);
@@ -29,6 +29,11 @@ export const uploadAvatarService = (file) => {
 export const deleteAvatarService = () => {
   return api.delete(ENDPOINTS.DELETE_AVATAR);
 };
+
+export const getAllUsersService = (params) => api.get(ENDPOINTS.GET_ALL_USERS, { params });
+export const deleteUserService = (id) => api.delete(ENDPOINTS.DELETE_USER(id));
+export const updateUserStatusService = (id, activeStatus) =>
+  api.patch(ENDPOINTS.UPDATE_USER_STATUS, { id, activeStatus });
 
 // GET
 export const getSizeCategoriesService = (params) => {

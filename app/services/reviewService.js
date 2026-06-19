@@ -21,5 +21,5 @@ export const deleteReviewService = (id) =>
   api.delete(ENDPOINTS.DELETE_REVIEW(id));
 
 // ADMIN REVIEWS
-export const getAdminReviewsService = () =>
-  api.get(ENDPOINTS.GET_ADMIN_REVIEWS);
+export const getAdminReviewsService = (params) =>
+  api.get(ENDPOINTS.GET_ADMIN_REVIEWS, { params });
