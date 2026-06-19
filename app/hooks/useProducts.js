@@ -7,6 +7,10 @@ import {
   getProductBySlugService,
   toggleProductStatusService,
   toggleProductFeatureService,
+  bulkUploadProductsService,
+  getBulkUploadStatusService,
+  getBulkUploadHistoryService,
+  getBulkUploadJobService,
 } from "../services/productsService";
 import { deleteProductService } from "../services/productService";
 
@@ -102,5 +106,57 @@ export function useToggleProductFeature() {
     onError: (err) => {
       toast.error(err.response?.data?.message || "Failed to update featured");
     },
+  });
+}
+
+export function useBulkUploadProducts() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ file, stockOnly }) => bulkUploadProductsService(file, stockOnly),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: PRODUCTS_KEY });
+    },
+    onError: (err) => {
+      toast.error(err.response?.data?.message || "Bulk upload failed");
+    },
+  });
+}
+
+export function useBulkUploadStatus(jobId) {
+  return useQuery({
+    queryKey: ["bulk-upload-status", jobId],
+    queryFn: () => getBulkUploadStatusService(jobId).then((r) => r.data?.data ?? null),
+    enabled: !!jobId,
+    // Poll every 15s to stay well within the server's 100 req/15min rate limit.
+    // Users can trigger an immediate refresh via the manual Refresh button.
+    refetchInterval: (query) => {
+      const status = query.state.data?.status;
+      if (status === "completed" || status === "failed") return false;
+      return 15000;
+    },
+  });
+}
+
+export const BULK_HISTORY_KEY = ["bulk-upload-history"];
+
+export function useBulkUploadHistory(params = {}) {
+  return useQuery({
+    queryKey: [...BULK_HISTORY_KEY, params],
+    queryFn: () =>
+      getBulkUploadHistoryService(params).then((r) => ({
+        data: r.data?.data ?? [],
+        pagination: r.data?.pagination ?? {},
+      })),
+    staleTime: 1000 * 30,
+    placeholderData: (prev) => prev,
+  });
+}
+
+export function useBulkUploadJob(jobId) {
+  return useQuery({
+    queryKey: ["bulk-upload-job", jobId],
+    queryFn: () => getBulkUploadJobService(jobId).then((r) => r.data?.data ?? null),
+    enabled: !!jobId,
+    staleTime: 1000 * 60,
   });
 }

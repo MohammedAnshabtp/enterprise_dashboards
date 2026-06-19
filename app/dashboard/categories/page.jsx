@@ -89,6 +89,35 @@ function Pagination({ pagination, page, setPage, isFetching }) {
   );
 }
 
+/* ─── Fallback for items without an image ─── */
+function extractLabel(name = "") {
+  const dim = name.match(/(\d+(?:\.\d+)?)[""']?\s*[×xX]\s*(\d+(?:\.\d+)?)/);
+  if (dim) return `${dim[1]}×${dim[2]}`;
+  const words = name.trim().split(/\s+/).filter(Boolean);
+  return words.slice(0, 2).map((w) => w[0]).join("").toUpperCase() || "—";
+}
+
+function CategoryImageFallback({ name = "", icon: Icon, accentColor, className = "" }) {
+  const label = extractLabel(name);
+  const hex = accentColor ?? "#6366F1";
+  return (
+    <div
+      className={`w-full h-full flex flex-col items-center justify-center gap-2 ${className}`}
+      style={{ background: `linear-gradient(135deg, ${hex}18 0%, ${hex}08 100%)` }}
+    >
+      <div
+        className="w-10 h-10 rounded-xl flex items-center justify-center"
+        style={{ backgroundColor: `${hex}20` }}
+      >
+        <Icon size={20} style={{ color: hex }} />
+      </div>
+      <span className="text-xs font-semibold" style={{ color: hex }}>
+        {label}
+      </span>
+    </div>
+  );
+}
+
 /* ─── Image-based category grid/list (Space, Size, TileUsage) ─── */
 function ImageCategoryTab({ tabId, label, icon: Icon, accentColor }) {
   const [page, setPage]        = useState(1);
@@ -221,8 +250,12 @@ function ImageCategoryTab({ tabId, label, icon: Icon, accentColor }) {
               <div key={item._id}
                 className="bg-white rounded-2xl border border-[#E2E8F0] shadow-sm hover:shadow-md hover:border-[#6366F1]/30 transition-all duration-200 overflow-hidden group flex flex-col">
                 <div className="relative overflow-hidden h-44">
-                  <img src={item.image?.url || "/placeholder.png"} alt={item.image?.alt || item.name}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                  {item.image?.url ? (
+                    <img src={item.image.url} alt={item.image?.alt || item.name}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                  ) : (
+                    <CategoryImageFallback name={item.name} icon={Icon} accentColor={accentColor} className="absolute inset-0" />
+                  )}
                   <div className="absolute top-2 right-2 flex gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
                     <button onClick={() => openEdit(item)}
                       className="w-8 h-8 bg-white rounded-full flex items-center justify-center shadow hover:bg-[#EEF2FF] transition-colors">
@@ -247,7 +280,11 @@ function ImageCategoryTab({ tabId, label, icon: Icon, accentColor }) {
               <div key={item._id}
                 className={`flex items-center gap-4 px-4 py-3 hover:bg-[#F8FAFC] transition-colors group ${i > 0 ? "border-t border-[#F1F5F9]" : ""}`}>
                 <div className="w-12 h-12 rounded-xl overflow-hidden border border-[#E2E8F0] shrink-0">
-                  <img src={item.image?.url || "/placeholder.png"} alt={item.name} className="w-full h-full object-cover" />
+                  {item.image?.url ? (
+                    <img src={item.image.url} alt={item.name} className="w-full h-full object-cover" />
+                  ) : (
+                    <CategoryImageFallback name={item.name} icon={Icon} accentColor={accentColor} className="w-12 h-12" />
+                  )}
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="font-medium text-sm text-[#0F172A] truncate">{item.name}</p>

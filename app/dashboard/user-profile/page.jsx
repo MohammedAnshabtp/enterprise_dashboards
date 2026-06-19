@@ -8,7 +8,7 @@ import toast from "react-hot-toast";
 import {
   Camera, Trash2, Plus, Loader2, Shield, CheckCircle2,
   XCircle, MapPin, Phone, Mail, Link2, Building2, Home,
-  CalendarDays, Pencil,
+  CalendarDays, Pencil, Star, ChevronRight,
 } from "lucide-react";
 import { useUserStore } from "../../store/userStore";
 import { useAddressStore } from "../../store/addressStore";
@@ -63,13 +63,17 @@ const EMPTY_ADDRESS = {
 export default function ProfilePage() {
   const { user, loading, avatarLoading, getProfile, updateProfile, uploadAvatar, deleteAvatar } =
     useUserStore();
-  const { addresses, fetchAddresses, createAddress, updateAddress, deleteAddress } =
+  const { addresses, fetchAddresses, createAddress, updateAddress, deleteAddress, getAddressById, setDefaultAddress } =
     useAddressStore();
 
   const [addressOpen, setAddressOpen] = useState(false);
   const [editId, setEditId] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
+  const [detailAddress, setDetailAddress] = useState(null);
+  const [detailOpen, setDetailOpen] = useState(false);
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [settingDefaultId, setSettingDefaultId] = useState(null);
 
   const profileForm = useForm({
     resolver: yupResolver(profileSchema),
@@ -176,6 +180,33 @@ export default function ProfilePage() {
       toast.error(err?.response?.data?.message ?? "Failed to delete address");
     } finally {
       setDeleteLoading(false);
+    }
+  };
+
+  const openDetail = async (id) => {
+    setDetailOpen(true);
+    setDetailLoading(true);
+    try {
+      const data = await getAddressById(id);
+      setDetailAddress(data);
+    } catch {
+      toast.error("Failed to load address details");
+      setDetailOpen(false);
+    } finally {
+      setDetailLoading(false);
+    }
+  };
+
+  const handleSetDefault = async (e, id) => {
+    e.stopPropagation();
+    setSettingDefaultId(id);
+    try {
+      await setDefaultAddress(id);
+      toast.success("Default address updated");
+    } catch (err) {
+      toast.error(err?.response?.data?.message ?? "Failed to set default");
+    } finally {
+      setSettingDefaultId(null);
     }
   };
 
@@ -368,18 +399,25 @@ export default function ProfilePage() {
               {addresses.map((a) => (
                 <div
                   key={a._id}
-                  className="border border-[#E2E8F0] rounded-xl p-4 hover:border-[#6366F1]/30 hover:bg-[#6366F1]/2 transition-colors"
+                  onClick={() => openDetail(a._id)}
+                  className={`border rounded-xl p-4 cursor-pointer transition-all duration-200 group ${
+                    a.isDefault
+                      ? "border-emerald-200 bg-emerald-50/40 hover:border-emerald-300"
+                      : "border-[#E2E8F0] hover:border-[#6366F1]/30 hover:bg-[#EEF2FF]/20"
+                  }`}
                 >
                   <div className="flex items-start justify-between gap-3">
-                    <div className="flex gap-3 min-w-0">
-                      <div className="w-9 h-9 rounded-lg bg-[#EEF2FF] flex items-center justify-center shrink-0 mt-0.5">
+                    <div className="flex gap-3 min-w-0 flex-1">
+                      <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 mt-0.5 ${
+                        a.isDefault ? "bg-emerald-100" : "bg-[#EEF2FF]"
+                      }`}>
                         {a.projectType === "commercial"
-                          ? <Building2 size={16} className="text-[#6366F1]" />
-                          : <Home size={16} className="text-[#6366F1]" />
+                          ? <Building2 size={16} className={a.isDefault ? "text-emerald-600" : "text-[#6366F1]"} />
+                          : <Home size={16} className={a.isDefault ? "text-emerald-600" : "text-[#6366F1]"} />
                         }
                       </div>
 
-                      <div className="min-w-0">
+                      <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2 flex-wrap">
                           <p className="font-semibold text-[#0F172A] text-sm">{a.fullName}</p>
                           {a.locationName && (
@@ -388,9 +426,9 @@ export default function ProfilePage() {
                             </Badge>
                           )}
                           {a.isDefault && (
-                            <Badge className="text-[10px] px-1.5 py-0 bg-emerald-50 text-emerald-700 border border-emerald-200">
-                              Default
-                            </Badge>
+                            <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full font-semibold bg-emerald-100 text-emerald-700 border border-emerald-200">
+                              <Star size={8} fill="currentColor" /> Default
+                            </span>
                           )}
                         </div>
 
@@ -415,35 +453,41 @@ export default function ProfilePage() {
                               <MapPin size={10} /> Near: {a.landmark}
                             </span>
                           )}
-                          {a.googleMapLink && (
-                            <a
-                              href={a.googleMapLink}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-xs text-[#6366F1] flex items-center gap-1 hover:underline"
-                            >
-                              <Link2 size={10} /> View on map
-                            </a>
-                          )}
                         </div>
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-1 shrink-0">
-                      <Button
-                        variant="ghost" size="sm"
-                        onClick={() => openEdit(a)}
-                        className="text-[#6366F1] hover:bg-[#EEF2FF] h-8 px-2 text-xs"
-                      >
-                        <Pencil size={12} className="mr-1" /> Edit
-                      </Button>
-                      <Button
-                        variant="ghost" size="sm"
-                        onClick={() => setDeleteTarget(a._id)}
-                        className="text-red-500 hover:bg-red-50 h-8 px-2 text-xs"
-                      >
-                        <Trash2 size={12} className="mr-1" /> Delete
-                      </Button>
+                    <div className="flex flex-col items-end gap-1.5 shrink-0">
+                      <div className="flex items-center gap-1">
+                        <Button
+                          variant="ghost" size="sm"
+                          onClick={(e) => { e.stopPropagation(); openEdit(a); }}
+                          className="text-[#6366F1] hover:bg-[#EEF2FF] h-7 px-2 text-xs"
+                        >
+                          <Pencil size={11} className="mr-1" /> Edit
+                        </Button>
+                        <Button
+                          variant="ghost" size="sm"
+                          onClick={(e) => { e.stopPropagation(); setDeleteTarget(a._id); }}
+                          className="text-red-500 hover:bg-red-50 h-7 px-2 text-xs"
+                        >
+                          <Trash2 size={11} className="mr-1" /> Delete
+                        </Button>
+                      </div>
+                      {!a.isDefault && (
+                        <button
+                          onClick={(e) => handleSetDefault(e, a._id)}
+                          disabled={settingDefaultId === a._id}
+                          className="flex items-center gap-1 text-[10px] font-medium text-[#64748B] hover:text-emerald-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {settingDefaultId === a._id
+                            ? <Loader2 size={10} className="animate-spin" />
+                            : <Star size={10} />
+                          }
+                          Set as default
+                        </button>
+                      )}
+                      <ChevronRight size={13} className="text-[#CBD5E1] group-hover:text-[#94A3B8] transition-colors mt-0.5" />
                     </div>
                   </div>
                 </div>
@@ -551,6 +595,103 @@ export default function ProfilePage() {
               );
             })()}
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── ADDRESS DETAIL DRAWER ── */}
+      <Dialog open={detailOpen} onOpenChange={(v) => { setDetailOpen(v); if (!v) setDetailAddress(null); }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Address Details</DialogTitle>
+          </DialogHeader>
+
+          {detailLoading ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 size={22} className="animate-spin text-[#6366F1]" />
+            </div>
+          ) : detailAddress ? (
+            <div className="mt-2 space-y-4">
+              {/* Header row */}
+              <div className="flex items-center gap-3 p-3.5 bg-[#F8FAFC] rounded-xl border border-[#E2E8F0]">
+                <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
+                  detailAddress.isDefault ? "bg-emerald-100" : "bg-[#EEF2FF]"
+                }`}>
+                  {detailAddress.projectType === "commercial"
+                    ? <Building2 size={18} className={detailAddress.isDefault ? "text-emerald-600" : "text-[#6366F1]"} />
+                    : <Home size={18} className={detailAddress.isDefault ? "text-emerald-600" : "text-[#6366F1]"} />
+                  }
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold text-[#0F172A] text-sm">{detailAddress.fullName}</p>
+                  <p className="text-xs text-[#94A3B8] capitalize">{detailAddress.projectType} project</p>
+                </div>
+                {detailAddress.isDefault && (
+                  <span className="inline-flex items-center gap-1 text-[10px] px-2 py-1 rounded-full font-semibold bg-emerald-100 text-emerald-700 border border-emerald-200 shrink-0">
+                    <Star size={9} fill="currentColor" /> Default
+                  </span>
+                )}
+              </div>
+
+              {/* Detail rows */}
+              <div className="divide-y divide-[#F1F5F9] border border-[#E2E8F0] rounded-xl overflow-hidden">
+                {[
+                  { icon: MapPin, label: "Location", value: [detailAddress.city, detailAddress.state, detailAddress.pincode].filter(Boolean).join(", ") },
+                  { icon: Phone, label: "Phone", value: detailAddress.phone },
+                  { icon: Mail, label: "Email", value: detailAddress.email },
+                  { icon: Building2, label: "Location name", value: detailAddress.locationName },
+                  { icon: MapPin, label: "Landmark", value: detailAddress.landmark },
+                ].filter(row => row.value).map(({ icon: Icon, label, value }) => (
+                  <div key={label} className="flex items-center gap-3 px-4 py-3">
+                    <Icon size={13} className="text-[#94A3B8] shrink-0" />
+                    <span className="text-xs text-[#94A3B8] w-24 shrink-0">{label}</span>
+                    <span className="text-sm text-[#0F172A] font-medium truncate">{value}</span>
+                  </div>
+                ))}
+                {detailAddress.googleMapLink && (
+                  <div className="flex items-center gap-3 px-4 py-3">
+                    <Link2 size={13} className="text-[#94A3B8] shrink-0" />
+                    <span className="text-xs text-[#94A3B8] w-24 shrink-0">Maps link</span>
+                    <a
+                      href={detailAddress.googleMapLink}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-sm text-[#6366F1] hover:underline truncate"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      Open in Maps
+                    </a>
+                  </div>
+                )}
+              </div>
+
+              {/* Actions */}
+              <div className="flex gap-2 pt-1">
+                {!detailAddress.isDefault && (
+                  <Button
+                    variant="ghost"
+                    className="flex-1 gap-1.5 text-emerald-600 hover:bg-emerald-50 border border-emerald-200"
+                    disabled={!!settingDefaultId}
+                    onClick={async () => {
+                      await handleSetDefault({ stopPropagation: () => {} }, detailAddress._id);
+                      setDetailAddress((prev) => prev ? { ...prev, isDefault: true } : prev);
+                    }}
+                  >
+                    {settingDefaultId === detailAddress._id
+                      ? <Loader2 size={13} className="animate-spin" />
+                      : <Star size={13} />
+                    }
+                    Set as Default
+                  </Button>
+                )}
+                <Button
+                  className="flex-1 gap-1.5"
+                  onClick={() => { setDetailOpen(false); openEdit(detailAddress); }}
+                >
+                  <Pencil size={13} /> Edit Address
+                </Button>
+              </div>
+            </div>
+          ) : null}
         </DialogContent>
       </Dialog>
 

@@ -3,21 +3,15 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { useForm } from "react-hook-form";
-import { yupResolver } from "@hookform/resolvers/yup";
-import * as yup from "yup";
-import toast from "react-hot-toast";
 import {
   Search, Plus, SlidersHorizontal, ChevronLeft, ChevronRight,
-  ChevronUp, ChevronDown, Star, Package, Trash2, Pencil,
-  X, ImagePlus, LayoutGrid, List,
+  Star, Trash2, Pencil, LayoutGrid, List,
 } from "lucide-react";
 import {
-  useProducts, useCreateProduct, useUpdateProduct, useDeleteProduct,
+  useProducts, useDeleteProduct,
 } from "../../hooks/useProducts";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
-import { Label } from "../../components/ui/label";
 import { Badge } from "../../components/ui/badge";
 import {
   Select, SelectTrigger, SelectContent, SelectItem,
@@ -30,19 +24,6 @@ import EmptyState from "../../components/ui/EmptyState";
 import { formatINR } from "../../lib/utils";
 
 const LIMIT = 12;
-
-const productSchema = yup.object({
-  name: yup.string().required("Product name is required"),
-  price: yup
-    .number()
-    .typeError("Price must be a number")
-    .positive("Price must be greater than 0")
-    .required("Price is required"),
-  description: yup.string().nullable(),
-  shortDescription: yup.string().nullable(),
-  brand: yup.string().nullable(),
-  finish: yup.string().nullable(),
-});
 
 const SORT_OPTIONS = [
   { label: "Newest",  value: "createdAt", order: "desc" },
@@ -65,11 +46,7 @@ export default function ProductsPage() {
   const [sortKey, setSortKey]         = useState(0);
   const [viewMode, setViewMode]       = useState("grid");
 
-  const [modalOpen, setModalOpen]     = useState(false);
-  const [editProduct, setEditProduct] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
-  const [thumbPreview, setThumbPreview] = useState(null);
-  const thumbRef = useRef(null);
 
   const debounceRef = useRef(null);
   useEffect(() => {
@@ -91,51 +68,10 @@ export default function ProductsPage() {
   const products   = result?.data       ?? [];
   const pagination = result?.pagination ?? {};
 
-  const createProduct = useCreateProduct();
-  const updateProduct = useUpdateProduct();
   const deleteProduct = useDeleteProduct();
 
-  const form = useForm({
-    resolver: yupResolver(productSchema),
-    defaultValues: { name: "", price: "", description: "", shortDescription: "", brand: "", finish: "" },
-  });
-  const { errors, isSubmitting } = form.formState;
-
-  const openAdd = () => {
-    setEditProduct(null);
-    setThumbPreview(null);
-    if (thumbRef.current) thumbRef.current.value = "";
-    form.reset({ name: "", price: "", description: "", shortDescription: "", brand: "", finish: "" });
-    setModalOpen(true);
-  };
-
   const openEdit = (p) => {
-    setEditProduct(p);
-    setThumbPreview(p.thumbnail?.url ?? null);
-    form.reset({
-      name: p.name ?? "",
-      price: p.price ?? "",
-      description: p.description ?? "",
-      shortDescription: p.shortDescription ?? "",
-      brand: p.brand ?? "",
-      finish: p.finish ?? "",
-    });
-    setModalOpen(true);
-  };
-
-  const onSubmit = async (data) => {
-    const file = thumbRef.current?.files?.[0];
-    if (!editProduct && !file) {
-      toast.error("Thumbnail image is required");
-      return;
-    }
-    const payload = { ...data, ...(file && { thumbnail: file }) };
-    if (editProduct) {
-      await updateProduct.mutateAsync({ id: editProduct._id, data: payload });
-    } else {
-      await createProduct.mutateAsync(payload);
-    }
-    setModalOpen(false);
+    router.push(`/dashboard/product-catalogue/edit/${p.slug}`);
   };
 
   const confirmDelete = () => {
@@ -465,99 +401,6 @@ export default function ProductsPage() {
           </div>
         </div>
       )}
-
-      {/* Add / Edit Modal */}
-      <Dialog open={modalOpen} onOpenChange={setModalOpen}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle>{editProduct ? "Edit Product" : "Add New Product"}</DialogTitle>
-          </DialogHeader>
-
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 mt-2">
-            <div className="space-y-1.5">
-              <Label>Product Name <span className="text-red-500">*</span></Label>
-              <Input placeholder="e.g. MOBON DOLCE CALCATTA" {...form.register("name")} />
-              {errors.name && <p className="text-xs text-[#EF4444]">{errors.name.message}</p>}
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <Label>Price (₹/sqft) <span className="text-red-500">*</span></Label>
-                <Input type="number" placeholder="e.g. 75" {...form.register("price")} />
-                {errors.price && <p className="text-xs text-[#EF4444]">{errors.price.message}</p>}
-              </div>
-              <div className="space-y-1.5">
-                <Label>Brand</Label>
-                <Input placeholder="e.g. SOMANY" {...form.register("brand")} />
-              </div>
-            </div>
-
-            <div className="space-y-1.5">
-              <Label>Finish</Label>
-              <Input placeholder="e.g. GLOSSY, MAT" {...form.register("finish")} />
-            </div>
-
-            <div className="space-y-1.5">
-              <Label>Short Description</Label>
-              <Input placeholder="One-line summary" {...form.register("shortDescription")} />
-            </div>
-
-            <div className="space-y-1.5">
-              <Label>Description</Label>
-              <textarea
-                placeholder="Full product description…"
-                rows={3}
-                {...form.register("description")}
-                className="w-full rounded-lg border border-[#E2E8F0] bg-white px-3 py-2 text-sm text-[#0F172A] placeholder:text-[#94A3B8] focus:outline-none focus:ring-2 focus:ring-[#6366F1]/30 resize-none"
-              />
-            </div>
-
-            <div className="space-y-1.5">
-              <Label>
-                Thumbnail Image {!editProduct && <span className="text-red-500">*</span>}
-              </Label>
-              {thumbPreview && (
-                <div className="relative w-full h-32 rounded-lg overflow-hidden border border-[#E2E8F0] mb-2">
-                  <img src={thumbPreview} alt="" className="w-full h-full object-cover" />
-                  <button
-                    type="button"
-                    onClick={() => { setThumbPreview(null); if (thumbRef.current) thumbRef.current.value = ""; }}
-                    className="absolute top-1.5 right-1.5 w-6 h-6 bg-black/50 rounded-full flex items-center justify-center hover:bg-black/70 transition-colors"
-                  >
-                    <X size={11} className="text-white" />
-                  </button>
-                </div>
-              )}
-              <label className="flex items-center justify-center gap-2 w-full border-2 border-dashed border-[#E2E8F0] rounded-lg p-4 cursor-pointer hover:border-[#6366F1]/50 hover:bg-[#EEF2FF]/30 transition-colors">
-                <ImagePlus size={16} className="text-[#94A3B8]" />
-                <span className="text-sm text-[#94A3B8]">
-                  {thumbPreview ? "Change image" : "Click to upload thumbnail"}
-                </span>
-                <input
-                  ref={thumbRef}
-                  type="file"
-                  accept="image/*"
-                  hidden
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) setThumbPreview(URL.createObjectURL(file));
-                  }}
-                />
-              </label>
-            </div>
-
-            <Button
-              type="submit"
-              disabled={isSubmitting || createProduct.isPending || updateProduct.isPending}
-              className="w-full disabled:cursor-not-allowed"
-            >
-              {isSubmitting || createProduct.isPending || updateProduct.isPending
-                ? <ButtonLoader text="Saving…" />
-                : editProduct ? "Update Product" : "Add Product"}
-            </Button>
-          </form>
-        </DialogContent>
-      </Dialog>
 
       {/* Delete Confirmation */}
       <Dialog open={!!deleteTarget} onOpenChange={() => setDeleteTarget(null)}>

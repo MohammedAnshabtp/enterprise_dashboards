@@ -15,15 +15,26 @@ import {
   Activity,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
   Layers,
+  Plus,
+  History,
 } from "lucide-react";
 import { useUIStore } from "../../store/uiStore";
 import { cn } from "../../lib/cn";
 
 const menu = [
   { label: "Users",         path: "/dashboard/user-visit",        icon: Users },
-  { label: "User Profile",  path: "/dashboard/user-profile",      icon: UserCircle },
-  { label: "Products",      path: "/dashboard/product-catalogue", icon: Package },
+  { label: "Account",        path: "/dashboard/user-profile",      icon: UserCircle },
+  {
+    label: "Products",
+    path: "/dashboard/product-catalogue",
+    icon: Package,
+    children: [
+      { label: "Add Product",         path: "/dashboard/product-catalogue/add",          icon: Plus },
+      { label: "Bulk Upload History", path: "/dashboard/product-catalogue/bulk-upload",  icon: History },
+    ],
+  },
   { label: "Categories",    path: "/dashboard/categories",        icon: Layers },
   { label: "Reviews",       path: "/dashboard/admin-reviews",     icon: Star },
   { label: "Catalogue",     path: "/dashboard/catalogue",         icon: BookOpen },
@@ -51,7 +62,7 @@ export default function Sidebar() {
         </div>
         {!sidebarCollapsed && (
           <div className="overflow-hidden animate-[slideInLeft_0.2s_ease_both]">
-            <p className="text-sm font-bold text-white leading-tight truncate">Angle Enterprise</p>
+            <p className="text-sm font-bold text-white leading-tight truncate">AR Enterprise</p>
             <p className="text-[10px] text-[#475569] truncate">Admin Dashboard</p>
           </div>
         )}
@@ -61,35 +72,92 @@ export default function Sidebar() {
       <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-0.5">
         {menu.map((item) => {
           const Icon = item.icon;
-          const active = pathname === item.path;
+          const isParentSection = item.children
+            ? pathname.startsWith(item.path)
+            : false;
+          const active = item.children ? false : pathname === item.path;
+          const childActive = item.children?.some((c) => pathname === c.path || pathname.startsWith(c.path + "/"));
+
           return (
-            <Link
-              key={item.path}
-              href={item.path}
-              title={sidebarCollapsed ? item.label : undefined}
-              className={cn(
-                "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-150 group relative cursor-pointer",
-                active
-                  ? "bg-linear-to-r from-[#6366F1]/20 to-[#6366F1]/5 text-white border border-[#6366F1]/25"
-                  : "text-[#64748B] hover:bg-[#1E293B] hover:text-[#CBD5E1]"
-              )}
-            >
-              <Icon
-                size={17}
+            <div key={item.path}>
+              <Link
+                href={item.path}
+                title={sidebarCollapsed ? item.label : undefined}
                 className={cn(
-                  "shrink-0 transition-colors duration-150",
-                  active ? "text-[#818CF8]" : "text-[#475569] group-hover:text-[#94A3B8]"
+                  "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-150 group relative cursor-pointer",
+                  active || isParentSection
+                    ? "bg-linear-to-r from-[#6366F1]/20 to-[#6366F1]/5 text-white border border-[#6366F1]/25"
+                    : "text-[#64748B] hover:bg-[#1E293B] hover:text-[#CBD5E1]"
                 )}
-              />
-              {!sidebarCollapsed && (
-                <span className="truncate animate-[slideInLeft_0.15s_ease_both]">
-                  {item.label}
-                </span>
+              >
+                <Icon
+                  size={17}
+                  className={cn(
+                    "shrink-0 transition-colors duration-150",
+                    active || isParentSection ? "text-[#818CF8]" : "text-[#475569] group-hover:text-[#94A3B8]"
+                  )}
+                />
+                {!sidebarCollapsed && (
+                  <span className="flex-1 truncate animate-[slideInLeft_0.15s_ease_both]">
+                    {item.label}
+                  </span>
+                )}
+                {!sidebarCollapsed && item.children && (
+                  <ChevronDown
+                    size={13}
+                    className={cn(
+                      "shrink-0 transition-transform duration-200 text-[#475569]",
+                      isParentSection && "rotate-180 text-[#818CF8]"
+                    )}
+                  />
+                )}
+                {(active || isParentSection) && (
+                  <span className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 bg-[#6366F1] rounded-r-full" />
+                )}
+              </Link>
+
+              {/* Sub-items */}
+              {item.children && !sidebarCollapsed && (
+                <div
+                  className={cn(
+                    "grid transition-[grid-template-rows] duration-300 ease-in-out",
+                    isParentSection ? "grid-rows-[1fr]" : "grid-rows-[0fr]"
+                  )}
+                >
+                  <div className="overflow-hidden">
+                    <div className="ml-4 mt-0.5 mb-0.5 pl-3 border-l border-[#1E293B] space-y-0.5">
+                      {item.children.map((child) => {
+                        const ChildIcon = child.icon;
+                        const childIsActive = pathname === child.path || pathname.startsWith(child.path + "/");
+                        return (
+                          <Link
+                            key={child.path}
+                            href={child.path}
+                            className={cn(
+                              "flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-xs font-medium transition-all duration-150 group cursor-pointer",
+                              childIsActive
+                                ? "bg-[#6366F1]/15 text-[#A5B4FC]"
+                                : "text-[#475569] hover:bg-[#1E293B] hover:text-[#94A3B8]"
+                            )}
+                          >
+                            <ChildIcon
+                              size={13}
+                              className={cn(
+                                "shrink-0",
+                                childIsActive ? "text-[#818CF8]" : "text-[#374155] group-hover:text-[#64748B]"
+                              )}
+                            />
+                            <span className="truncate animate-[slideInLeft_0.15s_ease_both]">
+                              {child.label}
+                            </span>
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
               )}
-              {active && (
-                <span className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 bg-[#6366F1] rounded-r-full" />
-              )}
-            </Link>
+            </div>
           );
         })}
       </nav>

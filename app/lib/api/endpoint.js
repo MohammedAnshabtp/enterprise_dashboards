@@ -27,6 +27,8 @@ export const ENDPOINTS = {
 
   // ADDRESS
   ADDRESS: "/api/v1/address/",
+  ADDRESS_BY_ID: (id) => `/api/v1/address/${id}`,
+  ADDRESS_SET_DEFAULT: (id) => `/api/v1/address/${id}/default`,
 
   // PRODUCTS
   CREATE_PRODUCT: "/api/v1/product/",

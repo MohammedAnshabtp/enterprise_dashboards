@@ -10,3 +10,9 @@ export const updateAddressService = (id, data) =>
 
 export const deleteAddressService = (id) =>
   api.delete(`${ENDPOINTS.ADDRESS}${id}`);
+
+export const getAddressByIdService = (id) =>
+  api.get(ENDPOINTS.ADDRESS_BY_ID(id));
+
+export const setDefaultAddressService = (id) =>
+  api.patch(ENDPOINTS.ADDRESS_SET_DEFAULT(id));

@@ -3,7 +3,7 @@ import { Toaster } from "react-hot-toast";
 import Providers from "./providers";
 
 export const metadata = {
-  title: "Angle Enterprise — Admin Dashboard",
+  title: "AR Enterprise — Admin Dashboard",
   description: "AR Tiles Emporium Admin Panel",
 };
 

@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { LogOut, UserRound, Search, Bell, ChevronDown } from "lucide-react";
-import { getProfile } from "../../services/authServices";
+import { useUserStore } from "../../store/userStore";
 import { cn } from "../../lib/cn";
 import toast from "react-hot-toast";
 
@@ -34,11 +34,12 @@ function getInitials(name) {
 
 export default function Header() {
   const [open, setOpen] = useState(false);
-  const [profile, setProfile] = useState(null);
   const dropdownRef = useRef(null);
-  const router = useRouter();
+  const router  = useRouter();
   const pathname = usePathname();
   const pageTitle = routeLabels[pathname] ?? "Dashboard";
+
+  const { user, getProfile } = useUserStore();
 
   useEffect(() => {
     const handleClickOutside = (e) => {
@@ -51,9 +52,7 @@ export default function Header() {
   }, []);
 
   useEffect(() => {
-    getProfile()
-      .then((res) => setProfile(res?.data?.data))
-      .catch(() => {});
+    if (!user) getProfile().catch(() => {});
   }, []);
 
   const handleLogout = () => {
@@ -62,14 +61,14 @@ export default function Header() {
     router.push("/auth/login");
   };
 
-  const initials = getInitials(profile?.name);
+  const initials = getInitials(user?.name);
 
   return (
     <header className="flex items-center justify-between h-16 px-6 bg-white border-b border-[#F1F5F9]">
       {/* Page title */}
       <div>
         <h1 className="text-base font-semibold text-[#0F172A] leading-tight">{pageTitle}</h1>
-        <p className="text-xs text-[#94A3B8]">Angle Enterprise Admin</p>
+        <p className="text-xs text-[#94A3B8]">AR Enterprise Admin</p>
       </div>
 
       {/* Right section */}
@@ -105,10 +104,10 @@ export default function Header() {
             </div>
             <div className="hidden sm:block text-left leading-tight">
               <p className="text-xs font-semibold text-[#0F172A] truncate max-w-[80px]">
-                {profile?.name ?? "Admin"}
+                {user?.name ?? "Admin"}
               </p>
               <p className="text-[10px] text-[#94A3B8] truncate max-w-[80px]">
-                {profile?.role ?? "Admin"}
+                {user?.role ?? "Admin"}
               </p>
             </div>
             <ChevronDown
@@ -121,12 +120,12 @@ export default function Header() {
             <div className="absolute right-0 top-11 w-44 bg-white border border-[#E2E8F0] rounded-xl shadow-[0_10px_25px_-5px_rgb(0_0_0/0.12)] py-1.5 z-50 animate-[fadeInScale_0.15s_ease_both]">
               {/* Profile info */}
               <div className="px-3 py-2 border-b border-[#F1F5F9] mb-1">
-                <p className="text-xs font-semibold text-[#0F172A] truncate">{profile?.name ?? "Admin"}</p>
-                <p className="text-[10px] text-[#94A3B8] truncate">{profile?.email ?? ""}</p>
+                <p className="text-xs font-semibold text-[#0F172A] truncate">{user?.name ?? "Admin"}</p>
+                <p className="text-[10px] text-[#94A3B8] truncate">{user?.email ?? ""}</p>
               </div>
 
               <button
-                onClick={() => { setOpen(false); router.push("/user-profile"); }}
+                onClick={() => { setOpen(false); router.push("/dashboard/user-profile"); }}
                 className="w-full flex items-center gap-2 px-3 py-2 text-xs text-[#475569] hover:bg-[#F8FAFC] hover:text-[#0F172A] transition-colors"
               >
                 <UserRound size={13} />

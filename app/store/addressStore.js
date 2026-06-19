@@ -4,6 +4,8 @@ import {
   createAddressService,
   updateAddressService,
   deleteAddressService,
+  getAddressByIdService,
+  setDefaultAddressService,
 } from "../services/addressService";
 
 export const useAddressStore = create((set) => ({
@@ -12,9 +14,7 @@ export const useAddressStore = create((set) => ({
 
   fetchAddresses: async () => {
     const res = await getAddressService();
-    set({
-      addresses: res.data?.data || [],
-    });
+    set({ addresses: res.data?.data || [] });
   },
 
   createAddress: async (data) => {
@@ -27,5 +27,20 @@ export const useAddressStore = create((set) => ({
 
   deleteAddress: async (id) => {
     await deleteAddressService(id);
+  },
+
+  getAddressById: async (id) => {
+    const res = await getAddressByIdService(id);
+    return res.data?.data ?? null;
+  },
+
+  setDefaultAddress: async (id) => {
+    await setDefaultAddressService(id);
+    set((state) => ({
+      addresses: state.addresses.map((a) => ({
+        ...a,
+        isDefault: a._id === id,
+      })),
+    }));
   },
 }));

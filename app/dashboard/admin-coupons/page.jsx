@@ -6,45 +6,152 @@ import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
 import {
   Plus, Search, Pencil, Trash2, Tag,
-  ChevronLeft, ChevronRight, Percent, DollarSign,
+  ChevronLeft, ChevronRight, Percent,
+  Users, Calendar, AlertTriangle, Power,
+  X, CheckCircle2,
 } from "lucide-react";
 import {
   useAdminCoupons, useCreateCoupon, useUpdateCoupon, useDeleteCoupon,
 } from "../../hooks/useCoupons";
 import dayjs from "../../lib/dayjs";
-import { Button } from "../../components/ui/button";
-import { Input }  from "../../components/ui/input";
-import { Label }  from "../../components/ui/label";
-import { Badge }  from "../../components/ui/badge";
+import { Button }  from "../../components/ui/button";
+import { Input }   from "../../components/ui/input";
+import { Label }   from "../../components/ui/label";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from "../../components/ui/dialog";
 import ButtonLoader from "../../components/ui/ButtonLoader";
 import EmptyState   from "../../components/ui/EmptyState";
 
-const LIMIT = 15;
+// ─── Schema ──────────────────────────────────────────────────────────────────
+
+const toNull = (v, o) => (o === "" || o == null ? null : v);
 
 const schema = yup.object({
-  code:           yup.string().required("Coupon code is required"),
-  type:           yup.string().oneOf(["percentage", "flat"], "Select a type").required("Type is required"),
-  value:          yup.number().positive("Must be greater than 0").required("Value is required"),
-  maxDiscount:    yup.number().positive().nullable().transform((v, o) => (o === "" ? null : v)),
-  minOrderAmount: yup.number().min(0).nullable().transform((v, o) => (o === "" ? null : v)),
-  usageLimit:     yup.number().integer().positive().nullable().transform((v, o) => (o === "" ? null : v)),
-  perUserLimit:   yup.number().integer().positive().nullable().transform((v, o) => (o === "" ? null : v)),
+  code:           yup.string().trim().required("Coupon code is required"),
+  type:           yup.string().oneOf(["percentage", "flat"]).required("Type is required"),
+  value:          yup.number().typeError("Enter a number").positive("Must be > 0").required("Value is required"),
+  maxDiscount:    yup.number().typeError("Enter a number").positive("Must be > 0").nullable().transform(toNull),
+  minOrderAmount: yup.number().typeError("Enter a number").min(0).nullable().transform(toNull),
+  usageLimit:     yup.number().typeError("Enter a number").integer().positive().nullable().transform(toNull),
+  perUserLimit:   yup.number().typeError("Enter a number").integer().positive().nullable().transform(toNull),
   expiresAt:      yup.string().nullable().transform((v) => v || null),
-  isActive:       yup.boolean(),
+  isActive:       yup.boolean().default(true),
 });
 
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+function getExpiryInfo(expiresAt) {
+  if (!expiresAt) return { label: "Never expires", short: "No expiry", color: "#94A3B8", urgent: false, expired: false };
+  const d   = dayjs(expiresAt);
+  const now = dayjs();
+  if (d.isBefore(now)) return { label: "Expired", short: "Expired", color: "#EF4444", urgent: true, expired: true };
+  const days = d.diff(now, "day");
+  if (days <= 3) return { label: `Expires in ${days}d`, short: `${days}d left`, color: "#EF4444", urgent: true, expired: false };
+  if (days <= 7) return { label: `Expires in ${days}d`, short: `${days}d left`, color: "#F59E0B", urgent: true, expired: false };
+  return { label: d.format("DD MMM YYYY"), short: d.format("DD MMM YY"), color: "#64748B", urgent: false, expired: false };
+}
+
+function getDiscountText(type, value, maxDiscount) {
+  if (!type || value == null || value === "") return { main: "—", sub: null };
+  if (type === "percentage") {
+    return {
+      main: `${value} off`,
+      sub: maxDiscount ? `max ₹${maxDiscount}` : null,
+      color: "#6366F1",
+      bg: "#EEF2FF",
+    };
+  }
+  return { main: `₹${value} off`, sub: "Fixed amount", color: "#D97706", bg: "#FEF3C7" };
+}
+
+// ─── Coupon Preview Card (shown in dialog) ────────────────────────────────────
+
+function CouponPreview({ values }) {
+  const { code, type, value, maxDiscount, minOrderAmount, expiresAt } = values;
+  const discount = getDiscountText(type, value, maxDiscount);
+  const expiry   = getExpiryInfo(expiresAt);
+
+  return (
+    <div className="relative rounded-2xl border-2 border-dashed border-[#6366F1]/30 bg-linear-to-br from-[#EEF2FF] to-[#F5F3FF] p-5 overflow-hidden">
+      {/* Decorative circles */}
+      <div className="absolute -left-4 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white border-2 border-dashed border-[#6366F1]/30" />
+      <div className="absolute -right-4 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white border-2 border-dashed border-[#6366F1]/30" />
+
+      <div className="flex items-center gap-4">
+        <div className="flex-1 min-w-0">
+          <p className="font-mono text-xl font-bold tracking-widest text-[#6366F1] truncate">
+            {code ? code.toUpperCase() : "PREVIEW"}
+          </p>
+          <p className="text-xs text-[#6366F1]/60 mt-0.5">
+            {minOrderAmount > 0 ? `Min. order ₹${minOrderAmount}` : "No minimum order"}
+            {" · "}
+            {expiry.label}
+          </p>
+        </div>
+        <div className="shrink-0 text-right">
+          <p className="text-2xl font-bold" style={{ color: discount.color ?? "#6366F1" }}>
+            {discount.main}
+          </p>
+          {discount.sub && (
+            <p className="text-xs mt-0.5" style={{ color: discount.color ?? "#6366F1" }}>
+              {discount.sub}
+            </p>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Usage bar ────────────────────────────────────────────────────────────────
+
+function UsageBar({ used, limit }) {
+  if (!limit) {
+    return (
+      <div className="text-sm text-[#64748B]">
+        <span className="font-semibold text-[#0F172A]">{used}</span>
+        <span className="text-xs text-[#94A3B8] ml-1">/ ∞</span>
+      </div>
+    );
+  }
+  const pct = Math.min(Math.round((used / limit) * 100), 100);
+  const color = pct >= 90 ? "#EF4444" : pct >= 70 ? "#F59E0B" : "#10B981";
+  return (
+    <div className="space-y-1 min-w-[80px]">
+      <div className="flex items-baseline gap-0.5">
+        <span className="text-sm font-semibold text-[#0F172A]">{used}</span>
+        <span className="text-xs text-[#94A3B8]">/{limit}</span>
+      </div>
+      <div className="h-1.5 bg-[#F1F5F9] rounded-full overflow-hidden w-20">
+        <div
+          className="h-full rounded-full transition-all duration-500"
+          style={{ width: `${pct}%`, backgroundColor: color }}
+        />
+      </div>
+    </div>
+  );
+}
+
+// ─── Page ─────────────────────────────────────────────────────────────────────
+
+const LIMIT = 15;
+
+const EMPTY_FORM = {
+  code: "", type: "percentage", value: "", maxDiscount: "",
+  minOrderAmount: "", usageLimit: "", perUserLimit: "1", expiresAt: "", isActive: true,
+};
+
 export default function AdminCouponsPage() {
-  const [page, setPage]        = useState(1);
-  const [search, setSearch]    = useState("");
-  const [debSearch, setDeb]    = useState("");
-  const [activeFilter, setAF]  = useState("all");
-  const [modalOpen, setModal]  = useState(false);
-  const [editItem, setEdit]    = useState(null);
-  const [deleteTarget, setDel] = useState(null);
-  const debRef                 = useRef(null);
+  const [page, setPage]         = useState(1);
+  const [search, setSearch]     = useState("");
+  const [debSearch, setDeb]     = useState("");
+  const [activeFilter, setAF]   = useState("all");
+  const [modalOpen, setModal]   = useState(false);
+  const [editItem, setEdit]     = useState(null);
+  const [deleteTarget, setDel]  = useState(null);
+  const [togglingId, setToggling] = useState(null);
+  const debRef = useRef(null);
 
   useEffect(() => {
     clearTimeout(debRef.current);
@@ -53,8 +160,7 @@ export default function AdminCouponsPage() {
   }, [search]);
 
   const params = {
-    page,
-    limit: LIMIT,
+    page, limit: LIMIT,
     ...(activeFilter !== "all" && { active: activeFilter === "active" }),
   };
   const { data: result, isLoading, isFetching } = useAdminCoupons(params);
@@ -72,23 +178,15 @@ export default function AdminCouponsPage() {
   const {
     register, handleSubmit, reset, watch, setValue,
     formState: { errors, isSubmitting },
-  } = useForm({
-    resolver: yupResolver(schema),
-    defaultValues: {
-      code: "", type: "percentage", value: "", maxDiscount: "",
-      minOrderAmount: "", usageLimit: "", perUserLimit: "", expiresAt: "", isActive: true,
-    },
-  });
+  } = useForm({ resolver: yupResolver(schema), defaultValues: EMPTY_FORM });
 
-  const watchType     = watch("type");
-  const watchIsActive = watch("isActive");
+  const formValues   = watch();
+  const watchType    = formValues.type;
+  const watchActive  = formValues.isActive;
 
   const openAdd = () => {
     setEdit(null);
-    reset({
-      code: "", type: "percentage", value: "", maxDiscount: "",
-      minOrderAmount: "", usageLimit: "", perUserLimit: "", expiresAt: "", isActive: true,
-    });
+    reset(EMPTY_FORM);
     setModal(true);
   };
 
@@ -101,7 +199,7 @@ export default function AdminCouponsPage() {
       maxDiscount:    item.maxDiscount ?? "",
       minOrderAmount: item.minOrderAmount ?? "",
       usageLimit:     item.usageLimit ?? "",
-      perUserLimit:   item.perUserLimit ?? "",
+      perUserLimit:   item.perUserLimit ?? "1",
       expiresAt:      item.expiresAt ? dayjs(item.expiresAt).format("YYYY-MM-DD") : "",
       isActive:       item.isActive ?? true,
     });
@@ -110,35 +208,33 @@ export default function AdminCouponsPage() {
 
   const onSubmit = async (data) => {
     const payload = {
-      code:           data.code.toUpperCase(),
+      code:           data.code.toUpperCase().trim(),
       type:           data.type,
       value:          data.value,
-      maxDiscount:    data.maxDiscount || undefined,
-      minOrderAmount: data.minOrderAmount || undefined,
-      usageLimit:     data.usageLimit || undefined,
-      perUserLimit:   data.perUserLimit || undefined,
-      expiresAt:      data.expiresAt || undefined,
+      maxDiscount:    data.maxDiscount ?? null,
+      minOrderAmount: data.minOrderAmount ?? 0,
+      usageLimit:     data.usageLimit ?? null,
+      perUserLimit:   data.perUserLimit ?? 1,
+      expiresAt:      data.expiresAt || null,
       isActive:       data.isActive,
     };
-
-    if (editItem) {
-      await update.mutateAsync({ id: editItem._id, data: payload });
-    } else {
-      await create.mutateAsync(payload);
-    }
+    if (editItem) await update.mutateAsync({ id: editItem._id, data: payload });
+    else          await create.mutateAsync(payload);
     setModal(false);
   };
 
-  const confirmDelete = () => {
-    del.mutate(deleteTarget._id);
-    setDel(null);
+  const quickToggle = async (item) => {
+    setToggling(item._id);
+    try { await update.mutateAsync({ id: item._id, data: { isActive: !item.isActive } }); }
+    finally { setToggling(null); }
   };
 
+  const confirmDelete = () => { del.mutate(deleteTarget._id); setDel(null); };
   const isPending = create.isPending || update.isPending;
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
+    <div className="space-y-5">
+      {/* ── Header ── */}
       <div className="bg-white rounded-2xl border border-[#E2E8F0] shadow-sm px-6 py-4">
         <div className="flex flex-col sm:flex-row sm:items-center gap-4">
           <div className="flex items-center gap-3 flex-1">
@@ -148,13 +244,10 @@ export default function AdminCouponsPage() {
             <div>
               <h1 className="text-xl font-bold text-[#0F172A]">Coupons</h1>
               <p className="text-xs text-[#94A3B8]">
-                {pagination.total != null
-                  ? `${pagination.total} coupons total`
-                  : "Manage discount coupons"}
+                {pagination.total != null ? `${pagination.total} coupons total` : "Manage discount coupons"}
               </p>
             </div>
           </div>
-
           <div className="flex items-center gap-2 flex-wrap">
             <div className="relative">
               <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#94A3B8]" />
@@ -165,7 +258,7 @@ export default function AdminCouponsPage() {
                 className="pl-8 w-44 h-9 text-sm"
               />
             </div>
-            <div className="flex items-center bg-[#F1F5F9] rounded-xl p-1 gap-0.5">
+            <div className="flex items-center bg-[#F1F5F9] rounded-xl p-0.5 gap-0.5">
               {["all", "active", "inactive"].map((f) => (
                 <button
                   key={f}
@@ -180,295 +273,360 @@ export default function AdminCouponsPage() {
                 </button>
               ))}
             </div>
-            <Button onClick={openAdd} size="sm">
-              <Plus size={14} className="mr-1.5" /> Add Coupon
+            <Button onClick={openAdd} size="sm" className="gap-1.5">
+              <Plus size={14} /> Add Coupon
             </Button>
           </div>
         </div>
       </div>
 
-      {/* Content */}
+      {/* ── Table ── */}
       <div className={`transition-opacity duration-150 ${isFetching && !isLoading ? "opacity-60" : ""}`}>
         {isLoading ? (
           <div className="bg-white rounded-2xl border border-[#E2E8F0] overflow-hidden">
-            {Array.from({ length: 8 }).map((_, i) => (
-              <div key={i} className={`flex gap-4 p-4 animate-pulse ${i > 0 ? "border-t border-[#F1F5F9]" : ""}`}>
-                <div className="w-24 h-5 bg-[#F1F5F9] rounded" />
-                <div className="flex-1 space-y-2">
-                  <div className="h-4 bg-[#F1F5F9] rounded w-1/4" />
-                  <div className="h-3 bg-[#F1F5F9] rounded w-1/3" />
-                </div>
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className={`flex items-center gap-4 px-5 py-4 animate-pulse ${i > 0 ? "border-t border-[#F1F5F9]" : ""}`}>
+                <div className="w-28 h-6 bg-[#F1F5F9] rounded-lg" />
+                <div className="flex-1 h-4 bg-[#F1F5F9] rounded" />
+                <div className="w-16 h-4 bg-[#F1F5F9] rounded" />
+                <div className="w-20 h-4 bg-[#F1F5F9] rounded" />
+                <div className="w-16 h-6 bg-[#F1F5F9] rounded-full" />
               </div>
             ))}
           </div>
         ) : filteredItems.length === 0 ? (
-          <EmptyState icon={Tag} title="No coupons found" />
+          <EmptyState icon={Tag} title="No coupons found" description="Add a coupon to offer discounts to your customers." action={{ label: "Add Coupon", onClick: openAdd }} />
         ) : (
           <div className="bg-white rounded-2xl border border-[#E2E8F0] shadow-sm overflow-hidden">
-            {/* Table header */}
-            <div className="hidden md:grid grid-cols-[1fr_auto_auto_auto_auto_auto_auto] gap-4 px-4 py-2.5 bg-[#F8FAFC] border-b border-[#E2E8F0]">
-              <span className="text-xs font-semibold text-[#94A3B8] uppercase tracking-wide">Code</span>
-              <span className="text-xs font-semibold text-[#94A3B8] uppercase tracking-wide">Type</span>
-              <span className="text-xs font-semibold text-[#94A3B8] uppercase tracking-wide">Value</span>
-              <span className="text-xs font-semibold text-[#94A3B8] uppercase tracking-wide">Used</span>
-              <span className="text-xs font-semibold text-[#94A3B8] uppercase tracking-wide">Expires</span>
-              <span className="text-xs font-semibold text-[#94A3B8] uppercase tracking-wide">Status</span>
-              <span className="text-xs font-semibold text-[#94A3B8] uppercase tracking-wide">Actions</span>
+            {/* Column headers */}
+            <div className="hidden lg:grid grid-cols-[minmax(0,1.5fr)_150px_110px_130px_110px_90px_72px] gap-4 px-5 py-2.5 bg-[#F8FAFC] border-b border-[#E2E8F0]">
+              {["CODE", "DISCOUNT", "USAGE", "EXPIRY", "PER CUSTOMER", "STATUS", ""].map((h) => (
+                <span key={h} className="text-[10px] font-bold text-[#94A3B8] uppercase tracking-widest">{h}</span>
+              ))}
             </div>
-            {filteredItems.map((item, i) => (
-              <div
-                key={item._id}
-                className={`flex flex-col md:grid md:grid-cols-[1fr_auto_auto_auto_auto_auto_auto] md:items-center gap-3 md:gap-4 px-4 py-3 hover:bg-[#F8FAFC] transition-colors group ${
-                  i > 0 ? "border-t border-[#F1F5F9]" : ""
-                }`}
-              >
-                <div>
-                  <span className="font-mono font-semibold text-sm text-[#0F172A]">{item.code}</span>
-                  {item.minOrderAmount > 0 && (
-                    <p className="text-xs text-[#94A3B8]">
-                      Min order: ₹{item.minOrderAmount.toLocaleString()}
-                    </p>
-                  )}
-                </div>
-                <Badge className={item.type === "percentage" ? "bg-[#EEF2FF] text-[#6366F1]" : "bg-[#FEF3C7] text-[#D97706]"}>
-                  {item.type === "percentage" ? (
-                    <span className="flex items-center gap-1"><Percent size={10} /> %</span>
-                  ) : (
-                    <span className="flex items-center gap-1"><DollarSign size={10} /> Flat</span>
-                  )}
-                </Badge>
-                <span className="text-sm font-semibold text-[#0F172A]">
-                  {item.type === "percentage" ? `${item.value}%` : `₹${item.value}`}
-                  {item.maxDiscount && item.type === "percentage" && (
-                    <span className="text-xs text-[#94A3B8] ml-1">(max ₹{item.maxDiscount})</span>
-                  )}
-                </span>
-                <span className="text-sm text-[#64748B]">
-                  {item.totalUsed ?? 0}
-                  {item.usageLimit && <span className="text-[#94A3B8]">/{item.usageLimit}</span>}
-                </span>
-                <span className="text-sm text-[#64748B]">
-                  {item.expiresAt ? dayjs(item.expiresAt).format("DD MMM YYYY") : "—"}
-                </span>
-                <Badge
-                  className={
-                    item.isActive
-                      ? "bg-[#DCFCE7] text-[#16A34A]"
-                      : "bg-[#F1F5F9] text-[#64748B]"
-                  }
-                >
-                  {item.isActive ? "Active" : "Inactive"}
-                </Badge>
-                <div className="flex gap-1.5 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
-                  <button
-                    onClick={() => openEdit(item)}
-                    className="w-7 h-7 rounded-lg flex items-center justify-center hover:bg-[#EEF2FF] transition-colors"
+
+            <div className="divide-y divide-[#F1F5F9]">
+              {filteredItems.map((item) => {
+                const discount = getDiscountText(item.type, item.value, item.maxDiscount);
+                const expiry   = getExpiryInfo(item.expiresAt);
+                const isToggling = togglingId === item._id;
+
+                return (
+                  <div
+                    key={item._id}
+                    className="group flex flex-col lg:grid lg:grid-cols-[minmax(0,1.5fr)_150px_110px_130px_110px_90px_72px] lg:items-center gap-3 lg:gap-4 px-5 py-4 hover:bg-[#FAFBFF] transition-colors"
                   >
-                    <Pencil size={13} className="text-[#6366F1]" />
-                  </button>
-                  <button
-                    onClick={() => setDel(item)}
-                    className="w-7 h-7 rounded-lg flex items-center justify-center hover:bg-red-50 transition-colors"
-                  >
-                    <Trash2 size={13} className="text-red-500" />
-                  </button>
-                </div>
-              </div>
-            ))}
+                    {/* Code */}
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono font-bold text-sm text-[#0F172A] bg-[#F8FAFC] border border-[#E2E8F0] px-2.5 py-0.5 rounded-lg tracking-wider">
+                          {item.code}
+                        </span>
+                        {item.isStockOnly && (
+                          <span className="text-[10px] bg-[#EEF2FF] text-[#6366F1] px-1.5 py-0.5 rounded font-semibold">
+                            STOCK
+                          </span>
+                        )}
+                      </div>
+                      {item.minOrderAmount > 0 && (
+                        <p className="text-xs text-[#94A3B8] mt-1">
+                          Min. order ₹{item.minOrderAmount.toLocaleString("en-IN")}
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Discount */}
+                    <div>
+                      <span
+                        className="inline-flex items-center gap-1.5 text-sm font-bold px-3 py-1 rounded-lg"
+                        style={{ color: discount.color, backgroundColor: discount.bg }}
+                      >
+                        {item.type === "percentage" ? <Percent size={12} /> : <span className="text-xs font-bold">₹</span>}
+                        {discount.main}
+                      </span>
+                      {discount.sub && (
+                        <p className="text-xs text-[#94A3B8] mt-1">{discount.sub}</p>
+                      )}
+                    </div>
+
+                    {/* Usage */}
+                    <UsageBar used={item.totalUsed ?? 0} limit={item.usageLimit} />
+
+                    {/* Expiry */}
+                    <div className="flex items-center gap-1.5">
+                      {expiry.urgent && <AlertTriangle size={12} style={{ color: expiry.color }} />}
+                      <span
+                        className="text-xs font-medium"
+                        style={{ color: expiry.color }}
+                      >
+                        {expiry.label}
+                      </span>
+                    </div>
+
+                    {/* Per customer */}
+                    <div className="flex items-center gap-1.5">
+                      <Users size={12} className="text-[#94A3B8]" />
+                      <span className="text-sm text-[#64748B]">
+                        {item.perUserLimit ?? 1}×
+                      </span>
+                    </div>
+
+                    {/* Status toggle */}
+                    <button
+                      type="button"
+                      onClick={() => quickToggle(item)}
+                      disabled={isToggling}
+                      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold transition-all cursor-pointer disabled:opacity-50 ${
+                        item.isActive
+                          ? "bg-[#DCFCE7] text-[#16A34A] hover:bg-[#BBF7D0]"
+                          : "bg-[#F1F5F9] text-[#64748B] hover:bg-[#E2E8F0]"
+                      }`}
+                    >
+                      <Power size={10} />
+                      {item.isActive ? "Active" : "Inactive"}
+                    </button>
+
+                    {/* Actions */}
+                    <div className="flex gap-1 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity">
+                      <button
+                        onClick={() => openEdit(item)}
+                        className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-[#EEF2FF] transition-colors cursor-pointer"
+                        title="Edit"
+                      >
+                        <Pencil size={13} className="text-[#6366F1]" />
+                      </button>
+                      <button
+                        onClick={() => setDel(item)}
+                        className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-[#FEE2E2] transition-colors cursor-pointer"
+                        title="Delete"
+                      >
+                        <Trash2 size={13} className="text-[#EF4444]" />
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         )}
       </div>
 
-      {/* Pagination */}
+      {/* ── Pagination ── */}
       {pagination.totalPages > 1 && (
-        <div className="flex items-center justify-between bg-white rounded-2xl border border-[#E2E8F0] shadow-sm px-4 py-3">
-          <p className="text-sm text-[#94A3B8]">
+        <div className="flex items-center justify-between bg-white rounded-2xl border border-[#E2E8F0] shadow-sm px-5 py-3">
+          <p className="text-xs text-[#94A3B8]">
             {(() => {
               const from = (pagination.page - 1) * pagination.limit + 1;
               const to   = Math.min(pagination.page * pagination.limit, pagination.total);
-              return `Showing ${from}–${to} of ${pagination.total}`;
+              return `${from}–${to} of ${pagination.total}`;
             })()}
           </p>
           <div className="flex items-center gap-1">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setPage((p) => p - 1)}
-              disabled={pagination.page <= 1 || isFetching}
-            >
-              <ChevronLeft size={15} />
+            <Button variant="ghost" size="sm" onClick={() => setPage((p) => p - 1)} disabled={pagination.page <= 1 || isFetching}>
+              <ChevronLeft size={14} />
             </Button>
             {Array.from({ length: pagination.totalPages }, (_, i) => i + 1)
-              .filter(
-                (p) =>
-                  p === 1 ||
-                  p === pagination.totalPages ||
-                  Math.abs(p - pagination.page) <= 1
-              )
-              .reduce((acc, p, i, arr) => {
-                if (i > 0 && p - arr[i - 1] > 1) acc.push("...");
-                acc.push(p);
-                return acc;
-              }, [])
+              .filter((p) => p === 1 || p === pagination.totalPages || Math.abs(p - pagination.page) <= 1)
+              .reduce((acc, p, i, arr) => { if (i > 0 && p - arr[i - 1] > 1) acc.push("…"); acc.push(p); return acc; }, [])
               .map((p, i) =>
-                p === "..." ? (
-                  <span key={`e${i}`} className="px-2 text-[#94A3B8] text-sm">…</span>
+                p === "…" ? (
+                  <span key={`e${i}`} className="w-8 text-center text-sm text-[#94A3B8]">…</span>
                 ) : (
-                  <Button
+                  <button
                     key={p}
-                    variant={p === pagination.page ? "default" : "ghost"}
-                    size="sm"
                     onClick={() => setPage(p)}
                     disabled={isFetching}
-                    className="w-8 h-8 p-0"
+                    className={`w-8 h-8 rounded-lg text-xs font-medium transition-all cursor-pointer ${
+                      p === pagination.page
+                        ? "bg-[#6366F1] text-white shadow-sm"
+                        : "text-[#64748B] hover:bg-[#F1F5F9]"
+                    }`}
                   >
                     {p}
-                  </Button>
+                  </button>
                 )
               )}
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setPage((p) => p + 1)}
-              disabled={pagination.page >= pagination.totalPages || isFetching}
-            >
-              <ChevronRight size={15} />
+            <Button variant="ghost" size="sm" onClick={() => setPage((p) => p + 1)} disabled={pagination.page >= pagination.totalPages || isFetching}>
+              <ChevronRight size={14} />
             </Button>
           </div>
         </div>
       )}
 
-      {/* Add / Edit Dialog */}
+      {/* ── Add / Edit Dialog ── */}
       <Dialog open={modalOpen} onOpenChange={setModal}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{editItem ? "Edit Coupon" : "Add Coupon"}</DialogTitle>
+            <DialogTitle className="flex items-center gap-2">
+              <div className="w-7 h-7 rounded-lg bg-[#EEF2FF] flex items-center justify-center">
+                <Tag size={14} className="text-[#6366F1]" />
+              </div>
+              {editItem ? "Edit Coupon" : "New Coupon"}
+            </DialogTitle>
           </DialogHeader>
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 mt-2">
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <Label>
-                  Code <span className="text-red-500">*</span>
-                </Label>
-                <Input
-                  placeholder="e.g. SAVE20"
-                  {...register("code")}
-                  className="uppercase"
-                  style={{ textTransform: "uppercase" }}
-                />
-                {errors.code && <p className="text-xs text-[#EF4444]">{errors.code.message}</p>}
-              </div>
-              <div className="space-y-1.5">
-                <Label>
-                  Type <span className="text-red-500">*</span>
-                </Label>
-                <select
-                  {...register("type")}
-                  className="w-full h-10 rounded-lg border border-[#E2E8F0] bg-white px-3 text-sm text-[#0F172A] focus:outline-none focus:ring-2 focus:ring-[#6366F1]/30"
-                >
-                  <option value="percentage">Percentage (%)</option>
-                  <option value="flat">Flat (₹)</option>
-                </select>
-                {errors.type && <p className="text-xs text-[#EF4444]">{errors.type.message}</p>}
-              </div>
-            </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <Label>
-                  Value <span className="text-red-500">*</span>{" "}
-                  <span className="text-[#94A3B8] text-xs">
-                    ({watchType === "percentage" ? "%" : "₹"})
-                  </span>
-                </Label>
-                <Input type="number" min="0" step="0.01" placeholder="20" {...register("value")} />
-                {errors.value && <p className="text-xs text-[#EF4444]">{errors.value.message}</p>}
-              </div>
-              {watchType === "percentage" && (
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-5 mt-1">
+            {/* Live preview */}
+            <CouponPreview values={formValues} />
+
+            {/* Discount section */}
+            <div className="space-y-3">
+              <p className="text-xs font-bold text-[#94A3B8] uppercase tracking-widest">Discount</p>
+              <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
-                  <Label>Max Discount (₹)</Label>
-                  <Input type="number" min="0" placeholder="Optional" {...register("maxDiscount")} />
-                  {errors.maxDiscount && <p className="text-xs text-[#EF4444]">{errors.maxDiscount.message}</p>}
+                  <Label>Code <span className="text-red-500">*</span></Label>
+                  <Input
+                    placeholder="e.g. SAVE20"
+                    {...register("code")}
+                    className="uppercase font-mono tracking-widest"
+                    style={{ textTransform: "uppercase" }}
+                    disabled={!!editItem}
+                  />
+                  {editItem && <p className="text-[10px] text-[#94A3B8]">Code cannot be changed after creation</p>}
+                  {errors.code && <p className="text-xs text-[#EF4444]">{errors.code.message}</p>}
                 </div>
-              )}
+                <div className="space-y-1.5">
+                  <Label>Type <span className="text-red-500">*</span></Label>
+                  <div className="flex gap-2">
+                    {[
+                      { value: "percentage", label: "% Off", icon: "%" },
+                      { value: "flat",       label: "₹ Off", icon: "₹" },
+                    ].map((opt) => (
+                      <button
+                        key={opt.value}
+                        type="button"
+                        onClick={() => { setValue("type", opt.value); if (opt.value === "flat") setValue("maxDiscount", ""); }}
+                        className={`flex-1 flex items-center justify-center gap-1.5 h-10 rounded-lg border text-sm font-medium transition-all cursor-pointer ${
+                          watchType === opt.value
+                            ? "bg-[#EEF2FF] border-[#6366F1]/40 text-[#6366F1]"
+                            : "bg-white border-[#E2E8F0] text-[#64748B] hover:border-[#6366F1]/30"
+                        }`}
+                      >
+                        <span className="font-bold">{opt.icon}</span> {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label>
+                    Value <span className="text-red-500">*</span>
+                    <span className="text-[#94A3B8] font-normal ml-1 text-xs">
+                      ({watchType === "percentage" ? "0–100%" : "amount in ₹"})
+                    </span>
+                  </Label>
+                  <Input type="number" min="0" step="0.01" placeholder={watchType === "percentage" ? "20" : "150"} {...register("value")} />
+                  {errors.value && <p className="text-xs text-[#EF4444]">{errors.value.message}</p>}
+                </div>
+                {watchType === "percentage" && (
+                  <div className="space-y-1.5">
+                    <Label>Max Discount Cap <span className="text-[#94A3B8] font-normal text-xs">(₹, optional)</span></Label>
+                    <Input type="number" min="0" placeholder="e.g. 200" {...register("maxDiscount")} />
+                    <p className="text-[10px] text-[#94A3B8]">Limits max discount even if % is higher</p>
+                    {errors.maxDiscount && <p className="text-xs text-[#EF4444]">{errors.maxDiscount.message}</p>}
+                  </div>
+                )}
+              </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <Label>Min Order Amount (₹)</Label>
-                <Input type="number" min="0" placeholder="Optional" {...register("minOrderAmount")} />
-              </div>
-              <div className="space-y-1.5">
-                <Label>Expires At</Label>
-                <Input type="date" {...register("expiresAt")} />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <Label>Total Usage Limit</Label>
-                <Input type="number" min="1" placeholder="Unlimited" {...register("usageLimit")} />
-              </div>
-              <div className="space-y-1.5">
-                <Label>Per User Limit</Label>
-                <Input type="number" min="1" placeholder="Unlimited" {...register("perUserLimit")} />
+            {/* Restrictions section */}
+            <div className="space-y-3 pt-1 border-t border-[#F1F5F9]">
+              <p className="text-xs font-bold text-[#94A3B8] uppercase tracking-widest">Restrictions</p>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label>Min. Order Amount <span className="text-[#94A3B8] font-normal text-xs">(₹)</span></Label>
+                  <Input type="number" min="0" placeholder="0 (no minimum)" {...register("minOrderAmount")} />
+                  {errors.minOrderAmount && <p className="text-xs text-[#EF4444]">{errors.minOrderAmount.message}</p>}
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Expires On <span className="text-[#94A3B8] font-normal text-xs">(optional)</span></Label>
+                  <Input type="date" {...register("expiresAt")} />
+                </div>
               </div>
             </div>
 
-            <div className="space-y-1.5">
-              <Label>Status</Label>
+            {/* Limits section */}
+            <div className="space-y-3 pt-1 border-t border-[#F1F5F9]">
+              <p className="text-xs font-bold text-[#94A3B8] uppercase tracking-widest">Usage Limits</p>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label>Total Uses Allowed</Label>
+                  <Input type="number" min="1" placeholder="Unlimited" {...register("usageLimit")} />
+                  <p className="text-[10px] text-[#94A3B8]">Leave blank for unlimited</p>
+                  {errors.usageLimit && <p className="text-xs text-[#EF4444]">{errors.usageLimit.message}</p>}
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Uses Per Customer</Label>
+                  <Input type="number" min="1" placeholder="1" {...register("perUserLimit")} />
+                  <p className="text-[10px] text-[#94A3B8]">Default: 1 use per customer</p>
+                  {errors.perUserLimit && <p className="text-xs text-[#EF4444]">{errors.perUserLimit.message}</p>}
+                </div>
+              </div>
+            </div>
+
+            {/* Status */}
+            <div className="pt-1 border-t border-[#F1F5F9]">
               <button
                 type="button"
-                onClick={() => setValue("isActive", !watchIsActive)}
-                className={`w-full h-10 rounded-lg border text-sm font-medium transition-colors cursor-pointer ${
-                  watchIsActive
-                    ? "bg-[#DCFCE7] border-[#16A34A]/30 text-[#16A34A]"
-                    : "bg-[#F1F5F9] border-[#E2E8F0] text-[#64748B]"
+                onClick={() => setValue("isActive", !watchActive)}
+                className={`w-full flex items-center justify-between px-4 h-12 rounded-xl border font-medium text-sm transition-all cursor-pointer ${
+                  watchActive
+                    ? "bg-[#F0FDF4] border-[#A7F3D0] text-[#065F46]"
+                    : "bg-[#F8FAFC] border-[#E2E8F0] text-[#64748B]"
                 }`}
               >
-                {watchIsActive ? "Active" : "Inactive"}
+                <span>{watchActive ? "Coupon is active and visible to customers" : "Coupon is disabled"}</span>
+                <span className={`w-5 h-5 rounded-full flex items-center justify-center ${watchActive ? "bg-[#10B981]" : "bg-[#CBD5E1]"}`}>
+                  {watchActive && <CheckCircle2 size={12} className="text-white" />}
+                </span>
               </button>
             </div>
 
-            <Button
-              type="submit"
-              disabled={isPending || isSubmitting}
-              className="w-full disabled:cursor-not-allowed"
-            >
-              {isPending || isSubmitting ? (
-                <ButtonLoader text="Saving…" />
-              ) : editItem ? (
-                "Update Coupon"
-              ) : (
-                "Add Coupon"
-              )}
+            <Button type="submit" disabled={isPending || isSubmitting} className="w-full">
+              {isPending || isSubmitting
+                ? <ButtonLoader text="Saving…" />
+                : editItem ? "Update Coupon" : "Create Coupon"}
             </Button>
           </form>
         </DialogContent>
       </Dialog>
 
-      {/* Delete Confirmation */}
+      {/* ── Delete Confirm ── */}
       <Dialog open={!!deleteTarget} onOpenChange={() => setDel(null)}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
-            <DialogTitle>Delete Coupon</DialogTitle>
+            <DialogTitle className="flex items-center gap-2 text-[#EF4444]">
+              <Trash2 size={16} /> Delete Coupon
+            </DialogTitle>
           </DialogHeader>
-          <p className="text-sm text-[#64748B] mt-1">
-            Are you sure you want to delete coupon{" "}
-            <span className="font-mono font-semibold text-[#0F172A]">{deleteTarget?.code}</span>? This
-            cannot be undone.
-          </p>
-          <div className="flex gap-3 mt-4">
-            <Button variant="ghost" className="flex-1" onClick={() => setDel(null)}>
-              Cancel
-            </Button>
-            <Button
-              className="flex-1 bg-red-500 hover:bg-red-600 text-white disabled:cursor-not-allowed"
-              onClick={confirmDelete}
-              disabled={del.isPending}
-            >
-              {del.isPending ? <ButtonLoader text="Deleting…" /> : "Delete"}
-            </Button>
+          <div className="mt-2 space-y-3">
+            <p className="text-sm text-[#64748B]">
+              Permanently delete coupon{" "}
+              <span className="font-mono font-bold text-[#0F172A] bg-[#F8FAFC] border border-[#E2E8F0] px-2 py-0.5 rounded">
+                {deleteTarget?.code}
+              </span>
+              ? This cannot be undone.
+            </p>
+            {(deleteTarget?.totalUsed ?? 0) > 0 && (
+              <div className="flex items-start gap-2 bg-[#FFF8E1] rounded-xl px-3 py-2.5 border border-[#FDE68A]">
+                <AlertTriangle size={13} className="text-[#D97706] shrink-0 mt-0.5" />
+                <p className="text-xs text-[#92400E]">
+                  This coupon has been used {deleteTarget.totalUsed} time{deleteTarget.totalUsed > 1 ? "s" : ""}. Deleting it will not affect past orders.
+                </p>
+              </div>
+            )}
+            <div className="flex gap-3 pt-1">
+              <Button variant="ghost" className="flex-1" onClick={() => setDel(null)}>Cancel</Button>
+              <Button
+                className="flex-1 bg-[#EF4444] hover:bg-[#DC2626] text-white"
+                onClick={confirmDelete}
+                disabled={del.isPending}
+              >
+                {del.isPending ? <ButtonLoader text="Deleting…" /> : "Delete"}
+              </Button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>
