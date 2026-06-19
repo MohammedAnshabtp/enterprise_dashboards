@@ -8,27 +8,45 @@ import {
 } from "../services/authServices";
 import {
   getSpaceCategoriesService,
-  getTileUsageCategoriesService,
   createSpaceCategoryService,
   updateSpaceCategoryService,
   deleteSpaceCategoryService,
+  getTileUsageCategoriesService,
+  createTileUsageCategoryService,
+  updateTileUsageCategoryService,
+  deleteTileUsageCategoryService,
 } from "../services/categoryService";
 
 // ─── Query keys ───────────────────────────────────────────────────────────────
 
-export const SIZE_CATEGORIES_KEY = ["categories", "size"];
-export const SPACE_CATEGORIES_KEY = ["categories", "space"];
+export const SIZE_CATEGORIES_KEY       = ["categories", "size"];
+export const SPACE_CATEGORIES_KEY      = ["categories", "space"];
 export const TILE_USAGE_CATEGORIES_KEY = ["categories", "tile-usage"];
+
+// ─── Response extractors ──────────────────────────────────────────────────────
+
+// Space backend: { success, data: [], pagination: {} }
+const extractSpace = (r) => ({
+  data: r.data?.data ?? [],
+  pagination: r.data?.pagination ?? {},
+});
+
+// Size / Style / TileUsage backend: { success, data: paginateResult | [] }
+const extractPaginated = (r) => {
+  const raw = r.data?.data;
+  if (raw && typeof raw === "object" && !Array.isArray(raw) && raw.data) {
+    return { data: raw.data, pagination: raw.pagination ?? {} };
+  }
+  return { data: Array.isArray(raw) ? raw : [], pagination: {} };
+};
 
 // ─── Size categories ──────────────────────────────────────────────────────────
 
 export function useSizeCategories(params) {
   return useQuery({
     queryKey: [...SIZE_CATEGORIES_KEY, params],
-    queryFn: () =>
-      getSizeCategoriesService(params).then(
-        (r) => r.data?.data?.data || r.data?.data || []
-      ),
+    queryFn: () => getSizeCategoriesService(params).then(extractPaginated),
+    placeholderData: (prev) => prev,
   });
 }
 
@@ -79,10 +97,8 @@ export function useDeleteSizeCategory() {
 export function useSpaceCategories(params) {
   return useQuery({
     queryKey: [...SPACE_CATEGORIES_KEY, params],
-    queryFn: () =>
-      getSpaceCategoriesService(params).then(
-        (r) => r.data?.data?.data || r.data?.data || []
-      ),
+    queryFn: () => getSpaceCategoriesService(params).then(extractSpace),
+    placeholderData: (prev) => prev,
   });
 }
 
@@ -130,12 +146,52 @@ export function useDeleteSpaceCategory() {
 
 // ─── Tile usage categories ────────────────────────────────────────────────────
 
-export function useTileUsageCategories() {
+export function useTileUsageCategories(params) {
   return useQuery({
-    queryKey: TILE_USAGE_CATEGORIES_KEY,
-    queryFn: () =>
-      getTileUsageCategoriesService().then(
-        (r) => r.data?.data?.data || r.data?.data || []
-      ),
+    queryKey: [...TILE_USAGE_CATEGORIES_KEY, params],
+    queryFn: () => getTileUsageCategoriesService(params).then(extractPaginated),
+    placeholderData: (prev) => prev,
+  });
+}
+
+export function useCreateTileUsageCategory() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: createTileUsageCategoryService,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: TILE_USAGE_CATEGORIES_KEY });
+      toast.success("Tile usage category created");
+    },
+    onError: (err) => {
+      toast.error(err.response?.data?.message || "Failed to create tile usage category");
+    },
+  });
+}
+
+export function useUpdateTileUsageCategory() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, data }) => updateTileUsageCategoryService(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: TILE_USAGE_CATEGORIES_KEY });
+      toast.success("Tile usage category updated");
+    },
+    onError: (err) => {
+      toast.error(err.response?.data?.message || "Failed to update tile usage category");
+    },
+  });
+}
+
+export function useDeleteTileUsageCategory() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id) => deleteTileUsageCategoryService(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: TILE_USAGE_CATEGORIES_KEY });
+      toast.success("Tile usage category deleted");
+    },
+    onError: (err) => {
+      toast.error(err.response?.data?.message || "Failed to delete tile usage category");
+    },
   });
 }

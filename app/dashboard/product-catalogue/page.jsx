@@ -2,6 +2,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
@@ -9,7 +10,7 @@ import toast from "react-hot-toast";
 import {
   Search, Plus, SlidersHorizontal, ChevronLeft, ChevronRight,
   ChevronUp, ChevronDown, Star, Package, Trash2, Pencil,
-  X, ImagePlus,
+  X, ImagePlus, LayoutGrid, List,
 } from "lucide-react";
 import {
   useProducts, useCreateProduct, useUpdateProduct, useDeleteProduct,
@@ -54,12 +55,15 @@ const SORT_OPTIONS = [
 ];
 
 export default function ProductsPage() {
+  const router = useRouter();
+
   const [page, setPage]               = useState(1);
   const [search, setSearch]           = useState("");
   const [debouncedSearch, setDebounced] = useState("");
   const [status, setStatus]           = useState("");
   const [isFeatured, setIsFeatured]   = useState("");
   const [sortKey, setSortKey]         = useState(0);
+  const [viewMode, setViewMode]       = useState("grid");
 
   const [modalOpen, setModalOpen]     = useState(false);
   const [editProduct, setEditProduct] = useState(null);
@@ -149,9 +153,25 @@ export default function ProductsPage() {
             {pagination.totalItems != null ? `${pagination.totalItems} products total` : "Manage your product catalog"}
           </p>
         </div>
-        <Button onClick={openAdd}>
-          <Plus size={15} className="mr-1.5" /> Add Product
-        </Button>
+        <div className="flex items-center gap-2">
+          <div className="flex items-center bg-[#F1F5F9] rounded-xl p-1 gap-0.5">
+            <button
+              onClick={() => setViewMode("grid")}
+              className={`w-7 h-7 rounded-lg flex items-center justify-center transition-colors cursor-pointer ${viewMode === "grid" ? "bg-white shadow-sm text-[#6366F1]" : "text-[#94A3B8] hover:text-[#64748B]"}`}
+            >
+              <LayoutGrid size={14} />
+            </button>
+            <button
+              onClick={() => setViewMode("list")}
+              className={`w-7 h-7 rounded-lg flex items-center justify-center transition-colors cursor-pointer ${viewMode === "list" ? "bg-white shadow-sm text-[#6366F1]" : "text-[#94A3B8] hover:text-[#64748B]"}`}
+            >
+              <List size={14} />
+            </button>
+          </div>
+          <Button onClick={() => router.push("/dashboard/product-catalogue/add")}>
+            <Plus size={15} className="mr-1.5" /> Add Product
+          </Button>
+        </div>
       </div>
 
       {/* Filters */}
@@ -218,24 +238,39 @@ export default function ProductsPage() {
         </div>
       </div>
 
-      {/* Grid */}
+      {/* Products */}
       <div className={`transition-opacity duration-150 ${isFetching && !isLoading ? "opacity-60" : ""}`}>
         {isLoading ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
-            {Array.from({ length: LIMIT }).map((_, i) => (
-              <div key={i} className="bg-white rounded-2xl border border-[#E2E8F0] overflow-hidden animate-pulse">
-                <div className="h-44 bg-[#F1F5F9]" />
-                <div className="p-4 space-y-2">
-                  <div className="h-4 bg-[#F1F5F9] rounded w-3/4" />
-                  <div className="h-3 bg-[#F1F5F9] rounded w-1/2" />
-                  <div className="h-5 bg-[#F1F5F9] rounded w-1/3" />
+          viewMode === "grid" ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
+              {Array.from({ length: LIMIT }).map((_, i) => (
+                <div key={i} className="bg-white rounded-2xl border border-[#E2E8F0] overflow-hidden animate-pulse">
+                  <div className="h-44 bg-[#F1F5F9]" />
+                  <div className="p-4 space-y-2">
+                    <div className="h-4 bg-[#F1F5F9] rounded w-3/4" />
+                    <div className="h-3 bg-[#F1F5F9] rounded w-1/2" />
+                    <div className="h-5 bg-[#F1F5F9] rounded w-1/3" />
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {Array.from({ length: LIMIT }).map((_, i) => (
+                <div key={i} className="bg-white rounded-xl border border-[#E2E8F0] p-4 flex gap-4 animate-pulse">
+                  <div className="w-14 h-14 bg-[#F1F5F9] rounded-lg shrink-0" />
+                  <div className="flex-1 space-y-2">
+                    <div className="h-4 bg-[#F1F5F9] rounded w-1/3" />
+                    <div className="h-3 bg-[#F1F5F9] rounded w-1/4" />
+                  </div>
+                  <div className="h-5 bg-[#F1F5F9] rounded w-20" />
+                </div>
+              ))}
+            </div>
+          )
         ) : products.length === 0 ? (
           <EmptyState icon={Package} title="No products found" />
-        ) : (
+        ) : viewMode === "grid" ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
             {products.map((p) => (
               <div
@@ -249,7 +284,6 @@ export default function ProductsPage() {
                     alt={p.name}
                     className="h-44 w-full object-cover group-hover:scale-105 transition-transform duration-300"
                   />
-                  {/* Badges */}
                   <div className="absolute top-2 left-2 flex flex-col gap-1">
                     {p.stock === 0 && (
                       <span className="bg-red-500 text-white text-[10px] font-semibold px-2 py-0.5 rounded-full">
@@ -267,7 +301,6 @@ export default function ProductsPage() {
                       <span className="bg-black/60 text-white text-xs px-2 py-1 rounded-full">Inactive</span>
                     </div>
                   )}
-                  {/* Hover actions */}
                   <div className="absolute top-2 right-2 flex gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
                     <button
                       onClick={() => openEdit(p)}
@@ -289,14 +322,12 @@ export default function ProductsPage() {
                   <h3 className="font-semibold text-[#0F172A] text-sm line-clamp-1 mb-0.5">
                     {p.name}
                   </h3>
-
                   {p.brand && (
                     <p className="text-xs text-[#94A3B8] mb-2">{p.brand}</p>
                   )}
-
                   <div className="flex items-center justify-between text-xs text-[#64748B] mb-3">
                     {p.dimensions?.length && p.dimensions?.width ? (
-                      <span>{p.dimensions.length}×{p.dimensions.width} ft</span>
+                      <span>{p.dimensions.length}×{p.dimensions.width} mm</span>
                     ) : <span />}
                     {p.finish && (
                       <Badge variant="outline" className="text-[10px] px-1.5 py-0 capitalize">
@@ -304,12 +335,8 @@ export default function ProductsPage() {
                       </Badge>
                     )}
                   </div>
-
                   <div className="mt-auto">
-                    <p className="text-lg font-bold text-[#6366F1]">
-                      {formatINR(p.price)}
-                      <span className="text-xs font-normal text-[#94A3B8]"> /sqft</span>
-                    </p>
+                    <p className="text-lg font-bold text-[#6366F1]">{formatINR(p.price)}</p>
                     <div className="flex justify-between text-xs text-[#94A3B8] mt-1">
                       {p.tileInBox ? <span>Tiles/Box: {p.tileInBox}</span> : <span />}
                       <span className={p.stock === 0 ? "text-red-400" : "text-emerald-600"}>
@@ -317,6 +344,67 @@ export default function ProductsPage() {
                       </span>
                     </div>
                   </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          /* List view */
+          <div className="bg-white rounded-2xl border border-[#E2E8F0] shadow-sm overflow-hidden">
+            {products.map((p, i) => (
+              <div
+                key={p._id}
+                className={`flex items-center gap-4 px-4 py-3 hover:bg-[#F8FAFC] transition-colors group ${i > 0 ? "border-t border-[#F1F5F9]" : ""}`}
+              >
+                <div className="relative shrink-0 w-14 h-14 rounded-xl overflow-hidden border border-[#E2E8F0]">
+                  <img
+                    src={p.thumbnail?.url || p.images?.[0]?.url || "/placeholder.png"}
+                    alt={p.name}
+                    className="w-full h-full object-cover"
+                  />
+                  {p.status === "inactive" && (
+                    <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                      <span className="text-white text-[8px] font-medium">OFF</span>
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-medium text-sm text-[#0F172A] truncate">{p.name}</h3>
+                    {p.isFeatured && (
+                      <span className="shrink-0 bg-amber-100 text-amber-600 text-[10px] font-semibold px-1.5 py-0.5 rounded-full flex items-center gap-0.5">
+                        <Star size={8} fill="currentColor" /> Featured
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-3 mt-0.5 text-xs text-[#94A3B8]">
+                    {p.brand && <span>{p.brand}</span>}
+                    {p.finish && <span className="capitalize">{p.finish}</span>}
+                    {p.sku && <span>SKU: {p.sku}</span>}
+                  </div>
+                </div>
+
+                <div className="text-right shrink-0">
+                  <p className="font-bold text-[#6366F1] text-sm">{formatINR(p.price)}</p>
+                  <p className={`text-xs mt-0.5 ${p.stock === 0 ? "text-red-400" : "text-emerald-600"}`}>
+                    Stock: {p.stock ?? 0}
+                  </p>
+                </div>
+
+                <div className="shrink-0 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <button
+                    onClick={() => openEdit(p)}
+                    className="w-7 h-7 rounded-lg flex items-center justify-center hover:bg-[#EEF2FF] transition-colors"
+                  >
+                    <Pencil size={13} className="text-[#6366F1]" />
+                  </button>
+                  <button
+                    onClick={() => setDeleteTarget(p)}
+                    className="w-7 h-7 rounded-lg flex items-center justify-center hover:bg-red-50 transition-colors"
+                  >
+                    <Trash2 size={13} className="text-red-500" />
+                  </button>
                 </div>
               </div>
             ))}

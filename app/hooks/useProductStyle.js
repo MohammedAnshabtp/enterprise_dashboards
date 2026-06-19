@@ -13,7 +13,14 @@ export function useProductStyle(params) {
   return useQuery({
     queryKey: [...PRODUCT_STYLE_KEY, params],
     queryFn: () =>
-      getProductStyleService(params).then((r) => r.data?.data || []),
+      getProductStyleService(params).then((r) => {
+        const raw = r.data?.data;
+        if (raw && typeof raw === "object" && !Array.isArray(raw) && raw.data) {
+          return { data: raw.data, pagination: raw.pagination ?? {} };
+        }
+        return { data: Array.isArray(raw) ? raw : [], pagination: {} };
+      }),
+    placeholderData: (prev) => prev,
   });
 }
 

@@ -2,8 +2,8 @@
 
 import { create } from "zustand";
 
+import { getSizeCategoriesService } from "../services/authServices";
 import {
-  getSizeCategoriesService,
   getSpaceCategoriesService,
   getTileUsageCategoriesService,
 } from "../services/categoryService";
