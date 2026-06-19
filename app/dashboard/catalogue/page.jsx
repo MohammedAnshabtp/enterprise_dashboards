@@ -197,7 +197,7 @@ function CatalogueCard({ item, onEdit, onDelete, onPreview }) {
     <div className="bg-white rounded-2xl border border-[#E2E8F0] shadow-sm hover:shadow-lg hover:border-[#6366F1]/25 transition-all duration-200 overflow-hidden group flex flex-col animate-[fadeInScale_0.2s_ease_both]">
       {/* Thumbnail */}
       <div className="relative h-44 overflow-hidden">
-        <PdfThumbnail url={item.file?.url} name={item.name} />
+        <PdfCover name={item.name} />
         {/* Edit / Delete on hover */}
         <div className="absolute top-2.5 right-2.5 flex gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
           <button
